@@ -1,0 +1,343 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String                   @id @default(cuid())
+  username        String                   @unique
+  passwordHash    String
+  fullName        String
+  role            String
+  organisation    String
+  email           String
+  phone           String                   @default("")
+  status          String                   @default("active")
+  sessionVersion  Int                      @default(0)
+  pinHash         String?
+  createdAt       DateTime                 @default(now())
+  auditSubmission AuditSubmission?
+  auditVersions   AuditSubmissionVersion[]
+  authSessions    AuthSession[]
+}
+
+model AuthSession {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionVersion   Int
+  refreshTokenHash String   @unique
+  lastActivityAt   DateTime @default(now())
+  expiresAt        DateTime
+  pinFailures      Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  @@index([userId])
+}
+
+model AuditSubmission {
+  id          String                   @id @default(cuid())
+  reference   String                   @unique
+  userId      String                   @unique
+  user        User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status      String                   @default("draft")
+  responses   String                   @default("{}")
+  findings    String                   @default("{}")
+  version     Int                      @default(0)
+  submittedAt DateTime?
+  reviewedAt  DateTime?
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+  evidence    AuditEvidence[]
+  versions    AuditSubmissionVersion[]
+}
+
+model AuditEvidence {
+  id           String          @id @default(cuid())
+  submissionId String
+  submission   AuditSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  sectionId    String
+  storageKey   String          @unique
+  originalName String
+  mimeType     String
+  byteSize     Int
+  uploadedAt   DateTime        @default(now())
+}
+
+model AuditSubmissionVersion {
+  id           String          @id @default(cuid())
+  submissionId String
+  submission   AuditSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  version      Int
+  actorId      String
+  actor        User            @relation(fields: [actorId], references: [id])
+  action       String
+  snapshot     String
+  createdAt    DateTime        @default(now())
+
+  @@unique([submissionId, version])
+}
+
+model Site {
+  id       String @id @default(cuid())
+  name     String
+  location String
+  type     String
+}
+
+model Incident {
+  id             String   @id @default(cuid())
+  ref            String   @unique
+  title          String
+  type           String
+  site           String
+  severity       String
+  status         String
+  reporter       String
+  summary        String
+  occurredAt     String
+  injuredName    String   @default("")
+  occupation     String   @default("")
+  bodyPart       String   @default("")
+  lostTimeDays   Int      @default(0)
+  oshaSection    String   @default("OSHA 2007 Sec. 6")
+  witnesses      String   @default("")
+  immediateCause String   @default("")
+  rootCause      String   @default("")
+  organisation   String   @default("")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model RiskAssessment {
+  id               String   @id @default(cuid())
+  ref              String   @unique
+  activity         String
+  location         String
+  hazard           String
+  likelihood       Int
+  severity         Int
+  riskScore        Int
+  existingControls String
+  residualRisk     String
+  status           String
+  personsAtRisk    String   @default("")
+  legalDuty        String   @default("OSHA 2007 Sec. 6 — Duty of care")
+  reviewDate       String   @default("")
+  organisation     String   @default("")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Jsa {
+  id             String   @id @default(cuid())
+  ref            String   @unique
+  taskTitle      String
+  site           String
+  department     String
+  supervisor     String
+  stepsCount     Int
+  permitRequired String
+  status         String
+  reviewDate     String
+  steps          String   @default("[]")
+  organisation   String   @default("")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model ToolboxTalk {
+  id             String   @id @default(cuid())
+  ref            String   @unique
+  topic          String
+  category       String
+  audience       String
+  duration       String
+  author         String
+  attendeesCount Int      @default(0)
+  status         String
+  content        String
+  organisation   String   @default("")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model ComplianceItem {
+  id           String   @id @default(cuid())
+  ref          String   @unique
+  title        String
+  category     String
+  site         String
+  regulator    String
+  dueDate      String
+  status       String
+  assignedTo   String
+  lawReference String
+  organisation String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model OshAudit {
+  id                 String   @id @default(cuid())
+  ref                String   @unique
+  facility           String
+  cycleYear          String
+  auditor            String
+  auditorCredentials String
+  complianceScore    Int
+  status             String
+  committeeSignOff   String
+  notes              String   @default("")
+  workplaceRegNo     String   @default("")
+  employeeCount      Int      @default(0)
+  oshaSections       String   @default("")
+  organisation       String   @default("")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model Inspection {
+  id           String   @id @default(cuid())
+  ref          String   @unique
+  title        String
+  area         String
+  site         String
+  inspector    String
+  scheduled    String
+  status       String
+  findings     String   @default("")
+  organisation String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model PpeRecord {
+  id           String   @id @default(cuid())
+  ref          String   @unique
+  employee     String
+  department   String
+  item         String
+  size         String
+  issuedOn     String
+  expiryDate   String
+  status       String
+  organisation String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model FireEquipment {
+  id             String   @id @default(cuid())
+  ref            String   @unique
+  type           String
+  location       String
+  site           String
+  lastInspection String
+  nextInspection String
+  status         String
+  organisation   String   @default("")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Personnel {
+  id           String   @id @default(cuid())
+  ref          String   @unique
+  name         String
+  role         String
+  site         String
+  department   String
+  certificate  String
+  expiryDate   String
+  phone        String
+  organisation String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model CommitteeMeeting {
+  id           String   @id @default(cuid())
+  ref          String   @unique
+  title        String
+  site         String
+  meetingDate  String
+  chair        String
+  attendees    Int
+  status       String
+  minutes      String
+  organisation String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model TrainingRecord {
+  id           String   @id @default(cuid())
+  ref          String   @unique
+  course       String
+  trainee      String
+  department   String
+  trainer      String
+  date         String
+  expiryDate   String
+  status       String
+  organisation String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Capa {
+  id           String   @id @default(cuid())
+  ref          String   @unique
+  title        String
+  source       String
+  site         String
+  owner        String
+  dueDate      String
+  priority     String
+  status       String
+  description  String
+  organisation String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Reminder {
+  id           String   @id @default(cuid())
+  title        String
+  dueDate      String
+  source       String
+  sourceRef    String
+  status       String
+  body         String
+  organisation String   @default("")
+  createdAt    DateTime @default(now())
+}
+
+model EmailLog {
+  id           String   @id @default(cuid())
+  toAddress    String
+  subject      String
+  body         String
+  status       String
+  organisation String   @default("")
+  createdAt    DateTime @default(now())
+}
+
+model DoshsReport {
+  id           String   @id @default(cuid())
+  ref          String   @unique
+  title        String
+  type         String
+  period       String
+  site         String
+  status       String
+  preparedBy   String
+  organisation String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
