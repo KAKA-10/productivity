@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, Suspense, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Eye, EyeOff, FileCheck2, LockKeyhole, ShieldCheck, Siren, Wrench } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, FileCheck2, LockKeyhole, ShieldCheck, Siren, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Field, TextInput } from '@/components/ui/field';
@@ -13,6 +13,11 @@ const WORKSPACE_TOOLS = [
   { icon: Siren, label: 'Incidents and near misses' },
   { icon: FileCheck2, label: 'Audits and inspections' },
   { icon: Wrench, label: 'Corrective actions' },
+];
+
+const DEMO_ACCOUNTS = [
+  { username: 'Auditor', password: 'admin12345', role: 'Lead auditor' },
+  { username: 'tafari_hse', password: 'client12345', role: 'Workplace team' },
 ];
 
 function safeNextPath(value: string | null) {
@@ -33,6 +38,7 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(shouldRestore);
   const restoreRequest = useRef<Promise<Response> | null>(null);
+  const showDemoAccess = process.env.NODE_ENV === 'development';
 
   useEffect(() => {
     if (!shouldRestore) return;
@@ -161,52 +167,85 @@ function LoginForm() {
                 Restoring your secure session…
               </p>
             ) : (
-              <form onSubmit={(event) => void onSubmit(event)} className="mt-7 space-y-4">
-                <Field label="Username">
-                  <TextInput
-                    name="username"
-                    autoComplete="username"
-                    autoCapitalize="none"
-                    spellCheck={false}
-                    required
-                    value={username}
-                    onChange={(event) => setUsername(event.target.value)}
-                    className="h-12 rounded-xl border-slate-200 px-4 shadow-none"
-                  />
-                </Field>
-                <div>
-                  <label htmlFor="password" className="mb-1.5 block text-xs font-semibold text-slate-700">
-                    Password
-                  </label>
-                  <div className="relative">
+              <>
+                <form onSubmit={(event) => void onSubmit(event)} className="mt-7 space-y-4">
+                  <Field label="Username">
                     <TextInput
-                      id="password"
-                      name="password"
-                      type={showPassword ? 'text' : 'password'}
-                      autoComplete="current-password"
+                      name="username"
+                      autoComplete="username"
+                      autoCapitalize="none"
+                      spellCheck={false}
                       required
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      className="h-12 rounded-xl border-slate-200 py-2.5 pl-4 pr-12 shadow-none"
+                      value={username}
+                      onChange={(event) => setUsername(event.target.value)}
+                      className="h-12 rounded-xl border-slate-200 px-4 shadow-none"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((visible) => !visible)}
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      aria-controls="password"
-                      aria-pressed={showPassword}
-                      className="absolute inset-y-0 right-0 flex w-12 items-center justify-center rounded-r-xl text-slate-400 transition hover:text-forest-700 focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-forest-600"
-                    >
-                      {showPassword
-                        ? <EyeOff aria-hidden="true" className="h-[18px] w-[18px]" />
-                        : <Eye aria-hidden="true" className="h-[18px] w-[18px]" />}
-                    </button>
+                  </Field>
+                  <div>
+                    <label htmlFor="password" className="mb-1.5 block text-xs font-semibold text-slate-700">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <TextInput
+                        id="password"
+                        name="password"
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="current-password"
+                        required
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        className="h-12 rounded-xl border-slate-200 py-2.5 pl-4 pr-12 shadow-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((visible) => !visible)}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        aria-controls="password"
+                        aria-pressed={showPassword}
+                        className="absolute inset-y-0 right-0 flex w-12 items-center justify-center rounded-r-xl text-slate-400 transition hover:text-forest-700 focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-forest-600"
+                      >
+                        {showPassword
+                          ? <EyeOff aria-hidden="true" className="h-[18px] w-[18px]" />
+                          : <Eye aria-hidden="true" className="h-[18px] w-[18px]" />}
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <Button type="submit" className="h-12 w-full rounded-xl bg-forest-700 font-bold hover:bg-forest-800" disabled={loading}>
-                  {loading ? 'Checking credentials…' : <>Continue <ArrowRight className="h-4 w-4" /></>}
-                </Button>
-              </form>
+                  <Button type="submit" className="h-12 w-full rounded-xl bg-forest-700 font-bold hover:bg-forest-800" disabled={loading}>
+                    {loading ? 'Checking credentials…' : <>Continue <ArrowRight className="h-4 w-4" /></>}
+                  </Button>
+                </form>
+
+                {showDemoAccess ? (
+                  <section aria-label="Demo access" className="mt-7 border-t border-slate-100 pt-5">
+                    <div className="mb-3 flex items-center gap-3">
+                      <span className="h-px flex-1 bg-slate-100" />
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Demo access · development only</span>
+                      <span className="h-px flex-1 bg-slate-100" />
+                    </div>
+                    <div className="grid gap-2.5">
+                      {DEMO_ACCOUNTS.map((account) => (
+                        <button
+                          key={account.username}
+                          type="button"
+                          onClick={() => {
+                            setUsername(account.username);
+                            setPassword(account.password);
+                          }}
+                          className="group flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-left transition hover:border-forest-200 hover:bg-forest-50/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600"
+                        >
+                          <span>
+                            <span className="block text-xs font-semibold text-forest-950">{account.role}</span>
+                            <span className="mt-1 block font-mono text-[11px] text-slate-500">
+                              {account.username} · {account.password}
+                            </span>
+                          </span>
+                          <Check className={`h-4 w-4 shrink-0 text-forest-600 transition-opacity ${username === account.username ? 'opacity-100' : 'opacity-0 group-hover:opacity-50'}`} />
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
+              </>
             )}
 
             <p className="mt-6 flex items-start gap-2 border-t border-slate-100 pt-5 text-xs leading-5 text-slate-500">

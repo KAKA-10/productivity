@@ -8,10 +8,15 @@ async function main() {
     throw new Error('Demo seeding is disabled in production');
   }
 
-  const adminPassword = process.env.TODOMU_SEED_ADMIN_PASSWORD;
-  const userPassword = process.env.TODOMU_SEED_USER_PASSWORD;
-  if (!adminPassword || adminPassword.length < 12 || !userPassword || userPassword.length < 12) {
-    throw new Error('Set unique TODOMU_SEED_ADMIN_PASSWORD and TODOMU_SEED_USER_PASSWORD values of at least 12 characters');
+  const adminPasswordOverride = process.env.TODOMU_SEED_ADMIN_PASSWORD;
+  const userPasswordOverride = process.env.TODOMU_SEED_USER_PASSWORD;
+  const developmentAdminPassword = adminPasswordOverride || 'admin12345';
+  const developmentUserPassword = userPasswordOverride || 'client12345';
+  if (
+    (adminPasswordOverride && adminPasswordOverride.length < 12) ||
+    (userPasswordOverride && userPasswordOverride.length < 12)
+  ) {
+    throw new Error('Custom demo passwords must be at least 12 characters');
   }
 
   await prisma.emailLog.deleteMany();
@@ -33,8 +38,8 @@ async function main() {
   await prisma.site.deleteMany();
   await prisma.user.deleteMany();
 
-  const adminHash = await bcrypt.hash(adminPassword, 12);
-  const userHash = await bcrypt.hash(userPassword, 12);
+  const adminHash = await bcrypt.hash(developmentAdminPassword, 12);
+  const userHash = await bcrypt.hash(developmentUserPassword, 12);
 
   await prisma.user.createMany({
     data: [
