@@ -27,7 +27,7 @@ export function generateToolboxTalk(topic: string, audience: string, duration: s
           : [
               'Stop, look, and assess before the task starts.',
               'Wear the PPE issued for this activity.',
-              'Report near-misses in TODOMU before the shift ends.',
+              'Report near-misses in Productivity OSHAPP before the shift ends.',
             ];
 
   return [

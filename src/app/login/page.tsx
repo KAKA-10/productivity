@@ -102,7 +102,7 @@ function LoginForm() {
             <ShieldCheck className="h-5 w-5" />
           </span>
           <span>
-            <span className="block text-sm font-bold tracking-wide">TODOMU</span>
+            <span className="block text-sm font-bold tracking-wide">Productivity OSHAPP</span>
             <span className="mt-0.5 block text-[10px] text-forest-200">by Productivity Consulting</span>
           </span>
         </Link>
@@ -148,7 +148,7 @@ function LoginForm() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-forest-50 text-forest-700">
               <LockKeyhole className="h-5 w-5" />
             </div>
-            <p className="mt-6 text-xs font-bold uppercase tracking-[0.14em] text-forest-600">TODOMU workspace</p>
+            <p className="mt-6 text-xs font-bold uppercase tracking-[0.14em] text-forest-600">Productivity OSHAPP workspace</p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-forest-950 sm:text-3xl">Sign in</h2>
             <p className="mt-2 text-sm leading-6 text-slate-500">
               Use your account credentials to continue to your OSH workspace.
@@ -214,6 +214,11 @@ function LoginForm() {
                     {loading ? 'Checking credentials…' : <>Continue <ArrowRight className="h-4 w-4" /></>}
                   </Button>
                 </form>
+
+                <p className="mt-5 text-center text-sm text-slate-500">
+                  New to Productivity OSHAPP?{' '}
+                  <Link href="/register" className="font-semibold text-forest-700 hover:text-forest-900">Create a workplace account</Link>
+                </p>
 
                 {showDemoAccess ? (
                   <section aria-label="Demo access" className="mt-7 border-t border-slate-100 pt-5">

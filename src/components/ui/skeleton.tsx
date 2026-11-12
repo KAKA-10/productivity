@@ -62,7 +62,7 @@ export function PageLoader() {
         <span className="h-10 w-10 animate-spin rounded-full border-2 border-forest-100 border-t-forest-600" />
       </div>
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-forest-700">
-        Loading TODOMU
+        Loading Productivity OSHAPP
       </p>
     </div>
   );

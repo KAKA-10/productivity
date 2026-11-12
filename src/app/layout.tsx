@@ -20,12 +20,12 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Productivity Consulting Limited — OSH, Environment & TODOMU',
+  title: 'Productivity Consulting Limited — OSH, Environment & Productivity OSHAPP',
   description:
-    'Kenyan training and consulting in productivity, occupational safety & health, and environmental compliance. Open TODOMU, our OSHA 2007 platform for SMEs.',
+    'Kenyan training and consulting in productivity, occupational safety & health, and environmental compliance. Open Productivity OSHAPP, our OSHA 2007 platform for SMEs.',
   appleWebApp: {
     capable: true,
-    title: 'TODOMU',
+    title: 'Productivity OSHAPP',
     statusBarStyle: 'default',
   },
 };

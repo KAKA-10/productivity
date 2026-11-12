@@ -12,6 +12,7 @@ export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (session.role !== 'user') return NextResponse.json({ error: 'Workplace account required' }, { status: 403 });
+  if (!session.auditAccess) return NextResponse.json({ error: 'Complete your audit registration payment to access this questionnaire.' }, { status: 402 });
 
   let submission = await prisma.auditSubmission.findUnique({ where: { userId: session.id } });
   if (!submission) {
@@ -60,6 +61,7 @@ export async function PATCH(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (session.role !== 'user') return NextResponse.json({ error: 'Workplace account required' }, { status: 403 });
+  if (!session.auditAccess) return NextResponse.json({ error: 'Complete your audit registration payment to access this questionnaire.' }, { status: 402 });
 
   const body: unknown = await request.json().catch(() => null);
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
@@ -150,6 +152,7 @@ export async function POST() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (session.role !== 'user') return NextResponse.json({ error: 'Workplace account required' }, { status: 403 });
+  if (!session.auditAccess) return NextResponse.json({ error: 'Complete your audit registration payment to access this questionnaire.' }, { status: 402 });
 
   const submission = await prisma.auditSubmission.findUnique({ where: { userId: session.id } });
   if (!submission) return NextResponse.json({ error: 'Audit submission not found' }, { status: 404 });

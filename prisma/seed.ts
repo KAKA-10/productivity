@@ -48,7 +48,7 @@ async function main() {
         passwordHash: adminHash,
         fullName: 'Toledo Douglas',
         role: 'admin',
-        organisation: 'TODOMU Platform — Lead Auditor',
+        organisation: 'Productivity OSHAPP — Lead Auditor',
         email: 'auditor@todomu.co.ke',
       },
       {

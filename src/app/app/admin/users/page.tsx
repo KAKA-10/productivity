@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Field, Select, TextInput } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
 import { strictApi } from '@/lib/strict-api';
+import { KENYAN_COUNTIES } from '@/lib/commerce-catalog';
 
 type Account = {
   id: string;
@@ -16,6 +17,7 @@ type Account = {
   fullName: string;
   role: 'admin' | 'user';
   organisation: string;
+  county: string;
   email: string | null;
   phone: string | null;
   status: 'active' | 'suspended';
@@ -27,11 +29,12 @@ type NewAccount = {
   password: string;
   fullName: string;
   organisation: string;
+  county: string;
   email: string;
   phone: string;
   role: 'user' | 'admin';
 };
-const emptyForm: NewAccount = { username: '', password: '', fullName: '', organisation: '', email: '', phone: '', role: 'user' };
+const emptyForm: NewAccount = { username: '', password: '', fullName: '', organisation: '', county: '', email: '', phone: '', role: 'user' };
 
 export default function AdminUsersPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -59,7 +62,7 @@ export default function AdminUsersPage() {
   useEffect(() => { void loadAccounts(); }, []);
 
   const filtered = accounts.filter((account) =>
-    `${account.username} ${account.fullName} ${account.organisation} ${account.role}`.toLowerCase().includes(search.toLowerCase()),
+    `${account.username} ${account.fullName} ${account.organisation} ${account.county} ${account.role}`.toLowerCase().includes(search.toLowerCase()),
   );
   const updateForm = <K extends keyof NewAccount>(key: K, value: NewAccount[K]) => setForm((current) => ({ ...current, [key]: value }));
 
@@ -131,12 +134,13 @@ export default function AdminUsersPage() {
       {error ? <p role="alert" className="rounded-xl border border-clay-200 bg-clay-50 p-4 text-sm text-clay-700">{error}</p> : null}
       {showForm ? (
         <form onSubmit={createAccount} className="rounded-2xl border border-forest-100 bg-white p-5 shadow-sm">
-          <div className="mb-5"><h2 className="font-bold">New account</h2><p className="mt-1 text-xs text-slate-500">Use a unique username and a password of at least 12 characters.</p></div>
+          <div className="mb-5"><h2 className="font-bold">New account</h2><p className="mt-1 text-xs text-slate-500">Use a unique username, select the workplace county, and set a password of at least 12 characters.</p></div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Full name"><TextInput required maxLength={120} value={form.fullName} onChange={(event) => updateForm('fullName', event.target.value)} /></Field>
             <Field label="Username"><TextInput required minLength={3} maxLength={32} autoComplete="off" value={form.username} onChange={(event) => updateForm('username', event.target.value)} /></Field>
             <Field label="Role"><Select value={form.role} onChange={(event) => updateForm('role', event.target.value as NewAccount['role'])}><option value="user">Workplace user</option><option value="admin">Administrator</option></Select></Field>
             <Field label="Workplace / organisation"><TextInput required maxLength={160} value={form.organisation} onChange={(event) => updateForm('organisation', event.target.value)} /></Field>
+            <Field label="Workplace county"><Select required value={form.county} onChange={(event) => updateForm('county', event.target.value)}><option value="">Choose county</option>{KENYAN_COUNTIES.map((county) => <option key={county} value={county}>{county}</option>)}</Select></Field>
             <Field label="Email (optional)"><TextInput type="email" maxLength={254} value={form.email} onChange={(event) => updateForm('email', event.target.value)} /></Field>
             <Field label="Phone (optional)"><TextInput type="tel" maxLength={32} value={form.phone} onChange={(event) => updateForm('phone', event.target.value)} /></Field>
             <Field label="Initial password"><TextInput required type="password" autoComplete="new-password" minLength={12} maxLength={128} value={form.password} onChange={(event) => updateForm('password', event.target.value)} /></Field>
@@ -196,7 +200,7 @@ export default function AdminUsersPage() {
             <tbody className="divide-y divide-slate-100">
               {filtered.map((account) => (
                 <tr key={account.id}>
-                  <td className="px-4 py-4"><p className="font-semibold">{account.fullName}</p><p className="text-xs text-slate-500">@{account.username} · {account.organisation}</p></td>
+                  <td className="px-4 py-4"><p className="font-semibold">{account.fullName}</p><p className="text-xs text-slate-500">@{account.username} · {account.organisation} · {account.county}</p></td>
                   <td className="px-4 py-4"><span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">{account.role === 'admin' ? <ShieldCheck className="h-4 w-4 text-forest-600" /> : <UserRound className="h-4 w-4" />}{account.role === 'admin' ? 'Administrator' : 'Workplace'}</span></td>
                   <td className="px-4 py-4 text-xs text-slate-600">{account.auditSubmission ? account.auditSubmission.status.replaceAll('_', ' ') : 'Not started'}</td>
                   <td className="px-4 py-4"><Badge tone={account.status === 'active' ? 'completed' : 'clay'}>{account.status}</Badge></td>

@@ -12,6 +12,9 @@ export async function GET(
 ) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (session.role !== 'admin' && !session.auditAccess) {
+    return NextResponse.json({ error: 'Complete your audit registration payment to access audit evidence.' }, { status: 402 });
+  }
 
   const { id } = await context.params;
   const evidence = await prisma.auditEvidence.findUnique({

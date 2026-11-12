@@ -23,6 +23,7 @@ import {
   Sparkles,
   Users,
   HeartPulse,
+  LockKeyhole,
   UserRoundCog,
   Wrench,
   X,
@@ -34,6 +35,8 @@ import type { SessionUser } from '@/lib/session';
 import { isAdmin } from '@/lib/roles';
 import { OfflineBanner } from '@/components/offline-banner';
 import { ReminderBell } from '@/components/reminder-bell';
+import { FeatureAccessPanel } from '@/components/feature-access-panel';
+import { featureForPath } from '@/lib/commerce-catalog';
 
 const GROUPS = [
   {
@@ -66,7 +69,8 @@ const GROUPS = [
     items: [
       { href: '/app/ppe', label: 'PPE Issuance', icon: HardHat },
       { href: '/app/fire-equipment', label: 'Fire Equipment', icon: Flame },
-      { href: '/app/training', label: 'Safety Training', icon: Users },
+      { href: '/app/training', label: 'Request Training', icon: Users },
+      { href: '/app/training/records', label: 'Training Records', icon: LockKeyhole },
       { href: '/app/personnel', label: 'First aiders & marshals', icon: HeartPulse },
       { href: '/app/committee', label: 'Committees & logs', icon: MessageSquare },
       { href: '/app/capa', label: 'CAPA Tracker', icon: Wrench },
@@ -106,6 +110,12 @@ export function AppShell({
   const router = useRouter();
   const admin = isAdmin(user);
   const groups = admin ? ADMIN_GROUPS : GROUPS;
+  const feature = featureForPath(pathname);
+  const auditPage = pathname === '/app/osh-audit' || pathname.startsWith('/app/osh-audit/');
+  const featureLocked = !admin && (
+    (auditPage && !user.auditAccess) ||
+    (feature !== undefined && !(user.unlockedFeatures ?? []).includes(feature.code))
+  );
   const [open, setOpen] = useState(false);
   const [site, setSite] = useState(SITES[0]);
   const [locked, setLocked] = useState(false);
@@ -312,7 +322,7 @@ export function AppShell({
           <ShieldCheck className="h-5 w-5" />
         </div>
         <div>
-          <p className="text-sm font-bold tracking-tight text-white">TODOMU</p>
+          <p className="text-sm font-bold tracking-tight text-white">Productivity OSHAPP</p>
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-forest-300">
             OSH Kenya
           </p>
@@ -440,7 +450,17 @@ export function AppShell({
           </div>
         </header>
         <OfflineBanner />
-        <main className="mx-auto w-full max-w-7xl p-4 pb-24 sm:p-6 lg:p-8">{children}</main>
+        <main className="mx-auto w-full max-w-7xl p-4 pb-24 sm:p-6 lg:p-8">
+          {featureLocked ? (
+            <FeatureAccessPanel
+              featureCode={auditPage ? undefined : feature?.code}
+              title={auditPage ? 'Your audit package is not active' : `${feature?.title ?? 'This feature'} is locked`}
+              description={auditPage
+                ? 'Complete your workplace audit registration payment to access the Safety and Compliance Audit.'
+                : `${feature?.description ?? 'This Productivity OSHAPP module'} is visible in your workspace. Purchase it once to enable access.`}
+            />
+          ) : children}
+        </main>
       </div>
       {locked ? (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-forest-950/85 p-4 backdrop-blur-sm">

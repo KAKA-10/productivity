@@ -28,13 +28,13 @@ export default function ContactPage() {
           <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-forest-600">Contact</p>
           <h1 className="font-display mt-3 text-4xl font-bold tracking-tight">Talk to Productivity Consulting.</h1>
           <p className="mt-4 text-slate-600">
-            OSH audits, NEMA filings, productivity diagnostics, or a TODOMU demo — send a note and
+            OSH audits, NEMA filings, productivity diagnostics, or a Productivity OSHAPP demo — send a note and
             we will route it to the right consultant.
           </p>
           <div className="mt-8 space-y-3 text-sm">
             <p><span className="font-semibold">Approvals:</span> DOSHS · NITA · NEMA</p>
             <p><span className="font-semibold">Focus:</span> Kenya and the wider East African region</p>
-            <p><span className="font-semibold">Platform:</span> TODOMU OSH compliance for SMEs</p>
+            <p><span className="font-semibold">Platform:</span> Productivity OSHAPP for OSH compliance</p>
           </div>
         </div>
         <form

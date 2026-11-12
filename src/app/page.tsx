@@ -43,22 +43,94 @@ const SERVICES = [
   {
     icon: ShieldCheck,
     title: 'Products & services',
-    items: ['Environmental consultancy', 'Productivity consultancy', 'OSH compliance', 'OSH mentored certificate (PCLGEMBAKAIZENS)'],
+    items: [
+      {
+        title: 'Environmental consultancy',
+        description: 'Practical environmental guidance to help your organisation understand its obligations, manage impacts and plan improvements.',
+      },
+      {
+        title: 'Productivity consultancy',
+        description: 'Review how work flows across your operation, identify avoidable delays and build improvements your team can sustain.',
+      },
+      {
+        title: 'OSH compliance',
+        description: 'Review workplace safety arrangements, identify gaps against applicable requirements and plan clear follow-up actions.',
+      },
+      {
+        title: 'OSH mentored certificate (PCLGEMBAKAIZENS)',
+        description: 'Mentored learning in occupational safety and health, supported by practical workplace application.',
+      },
+    ],
   },
   {
     icon: Factory,
     title: 'Facility setup',
-    items: ['Local authority certificates & licences', 'DOSHS / Ministry of Labour certificates', 'Facility layout', 'NEMA approval'],
+    items: [
+      {
+        title: 'Local authority certificates & licences',
+        description: 'Guidance on identifying and preparing for relevant county permits and local authority licensing requirements.',
+      },
+      {
+        title: 'DOSHS / Ministry of Labour certificates',
+        description: 'Support in understanding workplace registration and the documentation needed for applicable DOSHS processes.',
+      },
+      {
+        title: 'Facility layout',
+        description: 'Review how people, work areas, equipment and movement routes fit together, with safety and operational needs in mind.',
+      },
+      {
+        title: 'NEMA approval',
+        description: 'Environmental experts can advise on the assessment and documentation process relevant to your proposed project.',
+      },
+    ],
   },
   {
     icon: ClipboardCheck,
     title: 'Strategic management',
-    items: ['Performance management system', 'Company diagnosis', 'Records management', 'Strategic planning', 'Insurance risk management'],
+    items: [
+      {
+        title: 'Performance management system',
+        description: 'Develop practical measures, review routines and responsibilities that help teams track progress against their goals.',
+      },
+      {
+        title: 'Company diagnosis',
+        description: 'Build a clearer picture of organisational strengths and constraints to guide where improvement effort should go.',
+      },
+      {
+        title: 'Records management',
+        description: 'Organise business records, ownership and review practices so important information is easier to find and maintain.',
+      },
+      {
+        title: 'Strategic planning',
+        description: 'Turn priorities into a focused plan with defined outcomes, accountable owners and review milestones.',
+      },
+      {
+        title: 'Insurance risk management',
+        description: 'Review operational exposures and risk controls to support informed conversations about insurance and prevention.',
+      },
+    ],
   },
   {
     icon: Sparkles,
     title: 'Improvement tools',
-    items: ['Process improvement', 'Gemba kaizen', 'Management diagnostic surveys', 'Implementation support'],
+    items: [
+      {
+        title: 'Process improvement',
+        description: 'Map a work process, identify sources of delay or rework and test focused changes with the people doing the work.',
+      },
+      {
+        title: 'Gemba kaizen',
+        description: 'Facilitate practical, workplace-based improvement by observing work, listening to teams and testing small changes.',
+      },
+      {
+        title: 'Management diagnostic surveys',
+        description: 'Gather structured feedback about management practices and use the findings to identify opportunities for action.',
+      },
+      {
+        title: 'Implementation support',
+        description: 'Provide guidance as your team puts agreed improvements into practice and reviews their progress.',
+      },
+    ],
   },
 ];
 
@@ -121,7 +193,7 @@ export default function HomePage() {
                   href="/login"
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-forest-200 bg-white/80 px-5 py-3 text-sm font-bold text-forest-800 transition hover:border-forest-400 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-700"
                 >
-                  Explore TODOMU <ArrowDownRight className="h-4 w-4" />
+                  Explore Productivity OSHAPP <ArrowDownRight className="h-4 w-4" />
                 </Link>
               </div>
               <div className="mt-9 flex flex-wrap items-center gap-x-5 gap-y-3 text-xs font-semibold text-slate-500">
@@ -146,7 +218,7 @@ export default function HomePage() {
                         <ShieldCheck className="h-5 w-5" />
                       </div>
                       <div>
-                        <p className="text-sm font-bold">TODOMU</p>
+                        <p className="text-sm font-bold">Productivity OSHAPP</p>
                         <p className="text-[11px] text-forest-200">Workplace OSH, organised</p>
                       </div>
                     </div>
@@ -250,16 +322,27 @@ export default function HomePage() {
                   <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${index % 2 === 0 ? 'bg-forest-50 text-forest-700' : 'bg-safety-50 text-safety-700'}`}>
                     <Icon className="h-5 w-5" />
                   </span>
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <h3 className="font-display text-base font-semibold text-forest-900">{title}</h3>
-                    <ul className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2">
+                    <div className="mt-3 space-y-2">
                       {items.map((item) => (
-                        <li key={item} className="flex gap-2 text-sm leading-5 text-slate-600">
-                          <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-forest-400" />
-                          {item}
-                        </li>
+                        <details key={item.title} className="group rounded-xl border border-slate-100 bg-slate-50/70 open:border-forest-200 open:bg-forest-50/60">
+                          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-3.5 py-3 text-sm font-medium text-slate-700 outline-none transition hover:text-forest-800 focus-visible:ring-2 focus-visible:ring-forest-500 [&::-webkit-details-marker]:hidden">
+                            <span className="flex items-center gap-2.5">
+                              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-forest-400" />
+                              {item.title}
+                            </span>
+                            <ArrowDownRight className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-open:rotate-90 group-open:text-forest-700" />
+                          </summary>
+                          <div className="px-6 pb-4 pl-7">
+                            <p className="text-sm leading-6 text-slate-600">{item.description}</p>
+                            <Link href="/contact" className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-forest-700 hover:text-forest-900">
+                              Discuss this service <ArrowRight className="h-3.5 w-3.5" />
+                            </Link>
+                          </div>
+                        </details>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 </div>
               </article>
@@ -288,13 +371,13 @@ export default function HomePage() {
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-safety-500 text-forest-950">
                 <Sparkles className="h-6 w-6" />
               </span>
-              <p className="mt-6 text-xs font-bold uppercase tracking-[0.16em] text-safety-400">Meet TODOMU</p>
+              <p className="mt-6 text-xs font-bold uppercase tracking-[0.16em] text-safety-400">Meet Productivity OSHAPP</p>
               <h2 className="font-display mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Your workplace safety records, finally in one place.</h2>
               <p className="mt-4 max-w-xl text-sm leading-7 text-forest-100 sm:text-base">
                 A practical OSH platform for Kenyan SMEs. Keep key workplace records organised, support safer day-to-day operations and prepare DOSHS-ready reports.
               </p>
               <Link href="/login" className="mt-7 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-safety-500 px-5 py-3 text-sm font-bold text-forest-950 transition hover:bg-safety-400">
-                Open TODOMU <ArrowRight className="h-4 w-4" />
+                Open Productivity OSHAPP <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">

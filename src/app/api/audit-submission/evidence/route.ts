@@ -23,6 +23,7 @@ export async function POST(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (session.role !== 'user') return NextResponse.json({ error: 'Workplace account required' }, { status: 403 });
+  if (!session.auditAccess) return NextResponse.json({ error: 'Complete your audit registration payment to upload audit evidence.' }, { status: 402 });
 
   const form = await request.formData();
   const sectionId = form.get('sectionId');

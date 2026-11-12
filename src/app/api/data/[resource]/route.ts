@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { getModel, isResource, RESOURCE_PREFIX } from '@/lib/resources';
 import { nextRef } from '@/lib/utils';
+import { hasResourceAccess } from '@/lib/commerce-catalog';
 
 export async function GET(
   _request: Request,
@@ -16,6 +17,9 @@ export async function GET(
   const { resource } = await context.params;
   if (!isResource(resource)) {
     return NextResponse.json({ error: 'Unknown resource' }, { status: 404 });
+  }
+  if (!hasResourceAccess(resource, session)) {
+    return NextResponse.json({ error: 'Purchase this feature to access its workplace records.' }, { status: 402 });
   }
 
   const model = getModel(resource) as unknown as {
@@ -41,6 +45,9 @@ export async function POST(
   const { resource } = await context.params;
   if (!isResource(resource)) {
     return NextResponse.json({ error: 'Unknown resource' }, { status: 404 });
+  }
+  if (!hasResourceAccess(resource, session)) {
+    return NextResponse.json({ error: 'Purchase this feature to access its workplace records.' }, { status: 402 });
   }
 
   const payload = await request.json().catch(() => null);

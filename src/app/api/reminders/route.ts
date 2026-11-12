@@ -14,12 +14,13 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (session.role !== 'user') return NextResponse.json({ error: 'Workplace account required' }, { status: 403 });
 
+  const features = new Set(session.unlockedFeatures ?? []);
   const [compliance, fire, ppe, training, capa, emails] = await Promise.all([
-    prisma.complianceItem.findMany({ where: { organisation: session.organisation } }),
-    prisma.fireEquipment.findMany({ where: { organisation: session.organisation } }),
-    prisma.ppeRecord.findMany({ where: { organisation: session.organisation } }),
-    prisma.trainingRecord.findMany({ where: { organisation: session.organisation } }),
-    prisma.capa.findMany({ where: { organisation: session.organisation } }),
+    features.has('compliance') ? prisma.complianceItem.findMany({ where: { organisation: session.organisation } }) : Promise.resolve([]),
+    features.has('fire') ? prisma.fireEquipment.findMany({ where: { organisation: session.organisation } }) : Promise.resolve([]),
+    features.has('ppe') ? prisma.ppeRecord.findMany({ where: { organisation: session.organisation } }) : Promise.resolve([]),
+    features.has('training-records') ? prisma.trainingRecord.findMany({ where: { organisation: session.organisation } }) : Promise.resolve([]),
+    features.has('capa') ? prisma.capa.findMany({ where: { organisation: session.organisation } }) : Promise.resolve([]),
     prisma.emailLog.findMany({ where: { organisation: session.organisation }, orderBy: { createdAt: 'desc' }, take: 8 }),
   ]);
 
@@ -83,8 +84,8 @@ export async function POST() {
       prisma.emailLog.create({
         data: {
           toAddress: session.email || 'hse@tafarimillers.co.ke',
-          subject: `TODOMU reminder: ${item.title}`,
-          body: `${item.body}\nDue: ${item.dueDate}\nRef: ${item.sourceRef}\n\nThis is an automated OSHA 2007 compliance reminder from TODOMU.`,
+          subject: `Productivity OSHAPP reminder: ${item.title}`,
+          body: `${item.body}\nDue: ${item.dueDate}\nRef: ${item.sourceRef}\n\nThis is an automated OSHA 2007 compliance reminder from Productivity OSHAPP.`,
           organisation: session.organisation,
           status: process.env.SMTP_HOST ? 'queued-smtp' : 'logged-in-app',
         },

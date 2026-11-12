@@ -9,7 +9,7 @@ const LINKS = [
   { href: '/#services', label: 'Services' },
   { href: '/#facility', label: 'Facility setup' },
   { href: '/#network', label: 'Network' },
-  { href: '/#platform', label: 'TODOMU' },
+  { href: '/#platform', label: 'Productivity OSHAPP' },
   { href: '/contact', label: 'Contact' },
 ];
 
@@ -32,7 +32,7 @@ export function SiteHeader() {
             <Link key={l.href} href={l.href} className="transition hover:text-forest-700">{l.label}</Link>
           ))}
           <Link href="/login" className="inline-flex items-center gap-1.5 rounded-xl bg-forest-700 px-4 py-2.5 font-bold text-white shadow-sm transition hover:bg-forest-800">
-            TODOMU login <ArrowUpRight className="h-3.5 w-3.5" />
+            Productivity OSHAPP login <ArrowUpRight className="h-3.5 w-3.5" />
           </Link>
         </nav>
         <button
@@ -51,7 +51,7 @@ export function SiteHeader() {
           {LINKS.map((l) => (
             <Link key={l.href} href={l.href} onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 transition hover:bg-forest-50 hover:text-forest-800">{l.label}</Link>
           ))}
-          <Link href="/login" onClick={() => setOpen(false)} className="mt-1 rounded-xl bg-forest-700 px-4 py-3 text-center text-white">TODOMU login</Link>
+          <Link href="/login" onClick={() => setOpen(false)} className="mt-1 rounded-xl bg-forest-700 px-4 py-3 text-center text-white">Productivity OSHAPP login</Link>
         </nav>
       ) : null}
     </header>

@@ -30,7 +30,7 @@ export function SiteFooter() {
             <Link href="/#about" className="hover:text-white">About</Link>
             <Link href="/#services" className="hover:text-white">Services</Link>
             <Link href="/#facility" className="hover:text-white">Facility setup</Link>
-            <Link href="/#platform" className="hover:text-white">TODOMU</Link>
+            <Link href="/#platform" className="hover:text-white">Productivity OSHAPP</Link>
             <Link href="/contact" className="hover:text-white">Contact</Link>
             <Link href="/login" className="hover:text-white">Client login</Link>
           </div>

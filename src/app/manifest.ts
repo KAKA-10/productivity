@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'TODOMU OSH Compliance Platform',
-    short_name: 'TODOMU',
+    name: 'Productivity OSHAPP',
+    short_name: 'Productivity OSHAPP',
     description: 'Kenyan OSHA 2007 and DOSHS compliance for SMEs.',
     start_url: '/app',
     display: 'standalone',

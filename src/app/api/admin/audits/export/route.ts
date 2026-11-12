@@ -43,7 +43,7 @@ export async function GET() {
   return new Response(`\uFEFF${csv}`, {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': 'attachment; filename="todomu-audit-submissions.csv"',
+      'Content-Disposition': 'attachment; filename="productivity-oshapp-audit-submissions.csv"',
       'Cache-Control': 'private, no-store',
       'X-Content-Type-Options': 'nosniff',
     },

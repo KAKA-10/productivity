@@ -44,7 +44,7 @@ type AuditSubmission = {
   status: string;
   progress: { completed: number; total: number; percent: number };
 };
-type UserInfo = { fullName: string; organisation: string };
+type UserInfo = { fullName: string; organisation: string; auditAccess: boolean; unlockedFeatures: string[] };
 
 function daysUntil(value: string) {
   const date = new Date(value);
@@ -69,13 +69,14 @@ export function UserDashboard({ user }: { user: UserInfo }) {
 
   useEffect(() => {
     let active = true;
+    const hasFeature = (feature: string) => user.unlockedFeatures.includes(feature);
     Promise.all([
-      strictApi<Incident[]>('/api/data/incidents'),
-      strictApi<Capa[]>('/api/data/capa'),
-      strictApi<Audit[]>('/api/data/audits'),
-      strictApi<Talk[]>('/api/data/toolbox-talks'),
-      strictApi<Obligation[]>('/api/data/compliance'),
-      strictApi<AuditSubmission>('/api/audit-submission'),
+      hasFeature('incidents') ? strictApi<Incident[]>('/api/data/incidents') : Promise.resolve([]),
+      hasFeature('capa') ? strictApi<Capa[]>('/api/data/capa') : Promise.resolve([]),
+      user.auditAccess ? strictApi<Audit[]>('/api/data/audits') : Promise.resolve([]),
+      hasFeature('toolbox-talks') ? strictApi<Talk[]>('/api/data/toolbox-talks') : Promise.resolve([]),
+      hasFeature('compliance') ? strictApi<Obligation[]>('/api/data/compliance') : Promise.resolve([]),
+      user.auditAccess ? strictApi<AuditSubmission>('/api/audit-submission') : Promise.resolve(null),
     ])
       .then(([incidentRows, capaRows, auditRows, talkRows, obligationRows, submission]) => {
         if (!active) return;
@@ -94,7 +95,7 @@ export function UserDashboard({ user }: { user: UserInfo }) {
         if (active) setLoading(false);
       });
     return () => { active = false; };
-  }, []);
+  }, [user.auditAccess, user.unlockedFeatures]);
 
   const openCapa = capa.filter((item) => item.status.toLowerCase() !== 'closed').length;
   const latestAudit = audits[0];
@@ -247,6 +248,7 @@ export function UserDashboard({ user }: { user: UserInfo }) {
             { href: '/app/risk-assessments', title: 'Assess workplace risk', detail: 'Identify hazards and controls.', icon: HardHat, tone: 'bg-safety-50 text-safety-700' },
             { href: '/app/toolbox-talks', title: 'Create a toolbox talk', detail: 'Prepare and record a team briefing.', icon: Sparkles, tone: 'bg-forest-50 text-forest-700' },
             { href: '/app/capa', title: 'Track corrective action', detail: 'Assign and monitor follow-up work.', icon: Wrench, tone: 'bg-slate-100 text-slate-700' },
+            { href: '/app/training', title: 'Request team training', detail: 'Choose safety, fire, first-aid and more.', icon: HardHat, tone: 'bg-safety-50 text-safety-700' },
           ].map((item) => {
             const Icon = item.icon;
             return <Link key={item.href} href={item.href} className="group flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-forest-200 hover:shadow-sm"><span className={`rounded-xl p-2.5 ${item.tone}`}><Icon className="h-5 w-5" /></span><span className="min-w-0"><span className="flex items-center gap-1 text-sm font-bold text-ink">{item.title}<ArrowUpRight className="h-3.5 w-3.5 text-slate-400 transition group-hover:text-forest-700" /></span><span className="mt-1 block text-xs text-slate-500">{item.detail}</span></span></Link>;

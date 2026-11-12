@@ -1,4 +1,4 @@
-const CACHE = 'todomu-shell-v1';
+const CACHE = 'productivity-oshapp-shell-v1';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

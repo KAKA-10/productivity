@@ -68,7 +68,7 @@ export function buildPdf(title: string, lines: string[]) {
       `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Contents ${streamId} 0 R /Resources << /Font << /F1 ${fontId} 0 R /F2 ${fontId + 1} 0 R >> >> >>`;
 
     let stream = 'BT\n';
-    stream += `/F2 11 Tf 0.11 0.26 0.20 rg ${margin} ${pageHeight - 42} Td (TODOMU OSH PLATFORM  |  OSHA 2007  |  DOSHS) Tj\n`;
+    stream += `/F2 11 Tf 0.11 0.26 0.20 rg ${margin} ${pageHeight - 42} Td (PRODUCTIVITY OSHAPP  |  OSHA 2007  |  DOSHS) Tj\n`;
     stream += `/F1 16 Tf 0 0 0 rg 0 -24 Td (${escapePdf(title)}) Tj\n`;
     stream += `/F1 10 Tf 0 -18 Td (${escapePdf('Confidential workplace safety record — Tafari Millers Ltd')}) Tj\n`;
     stream += '0 g\n';

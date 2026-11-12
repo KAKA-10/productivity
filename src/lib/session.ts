@@ -21,11 +21,14 @@ export type SessionUser = {
   fullName: string;
   role: string;
   organisation: string;
+  county?: string;
   email: string;
   sessionVersion?: number;
   lastActivityAt?: string;
   accessExpiresAt?: string;
   pinEnabled?: boolean;
+  auditAccess?: boolean;
+  unlockedFeatures?: string[];
 };
 
 export type AccessTokenClaims = {

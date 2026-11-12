@@ -9,5 +9,10 @@ export default async function DashboardPage() {
 
   if (!session) redirect('/login');
   if (isAdmin(session)) return <AdminDashboard />;
-  return <UserDashboard user={{ fullName: session.fullName, organisation: session.organisation }} />;
+  return <UserDashboard user={{
+    fullName: session.fullName,
+    organisation: session.organisation,
+    auditAccess: session.auditAccess ?? false,
+    unlockedFeatures: session.unlockedFeatures ?? [],
+  }} />;
 }

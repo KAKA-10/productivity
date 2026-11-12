@@ -13,6 +13,7 @@ import {
   hashRefreshToken,
   type SessionUser,
 } from './session';
+import { parseUnlockedFeatures } from './commerce-catalog';
 
 export type { SessionUser };
 
@@ -64,10 +65,13 @@ export async function getSession(): Promise<SessionUser | null> {
     role: user.role,
     organisation: user.organisation,
     email: user.email,
+    county: user.county,
     sessionVersion: user.sessionVersion,
     lastActivityAt: authSession.lastActivityAt.toISOString(),
     accessExpiresAt: authSession.accessExpiresAt.toISOString(),
     pinEnabled: Boolean(user.pinHash),
+    auditAccess: user.auditAccess,
+    unlockedFeatures: parseUnlockedFeatures(user.unlockedFeatures),
   };
 }
 

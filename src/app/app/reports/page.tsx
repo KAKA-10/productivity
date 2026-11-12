@@ -110,7 +110,7 @@ export default function ReportsPage() {
               `Status: ${view.status}`,
               '',
               'This pack is prepared for DOSHS under the Occupational Safety and Health Act, 2007.',
-              'Attach supporting registers from TODOMU (incidents, CAPA, training, fire equipment) before filing.',
+              'Attach supporting registers from Productivity OSHAPP (incidents, CAPA, training, fire equipment) before filing.',
             ]);
             toast.success('PDF downloaded');
           }}>

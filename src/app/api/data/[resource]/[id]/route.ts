@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { canDelete } from '@/lib/roles';
 import { getModel, isResource } from '@/lib/resources';
+import { hasResourceAccess } from '@/lib/commerce-catalog';
 
 export async function PATCH(
   request: Request,
@@ -16,6 +17,9 @@ export async function PATCH(
   const { resource, id } = await context.params;
   if (!isResource(resource)) {
     return NextResponse.json({ error: 'Unknown resource' }, { status: 404 });
+  }
+  if (!hasResourceAccess(resource, session)) {
+    return NextResponse.json({ error: 'Purchase this feature to access its workplace records.' }, { status: 402 });
   }
 
   const payload = await request.json().catch(() => null);
@@ -54,6 +58,9 @@ export async function DELETE(
   const { resource, id } = await context.params;
   if (!isResource(resource)) {
     return NextResponse.json({ error: 'Unknown resource' }, { status: 404 });
+  }
+  if (!hasResourceAccess(resource, session)) {
+    return NextResponse.json({ error: 'Purchase this feature to access its workplace records.' }, { status: 402 });
   }
 
   const model = getModel(resource) as unknown as {

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+import { KENYAN_COUNTIES } from '@/lib/commerce-catalog';
 
 const USERNAME_PATTERN = /^[a-zA-Z0-9._-]{3,32}$/;
 
@@ -22,6 +23,7 @@ export async function GET() {
       fullName: true,
       role: true,
       organisation: true,
+      county: true,
       email: true,
       phone: true,
       status: true,
@@ -48,6 +50,7 @@ export async function POST(request: Request) {
   const password = typeof input.password === 'string' ? input.password : '';
   const fullName = typeof input.fullName === 'string' ? input.fullName.trim() : '';
   const organisation = typeof input.organisation === 'string' ? input.organisation.trim() : '';
+  const county = typeof input.county === 'string' ? input.county : '';
   const email = typeof input.email === 'string' ? input.email.trim() : '';
   const phone = typeof input.phone === 'string' ? input.phone.trim() : '';
   const role = input.role;
@@ -61,6 +64,9 @@ export async function POST(request: Request) {
   if (!fullName || fullName.length > 120 || !organisation || organisation.length > 160) {
     return NextResponse.json({ error: 'Full name and workplace are required' }, { status: 400 });
   }
+  if (!KENYAN_COUNTIES.includes(county as (typeof KENYAN_COUNTIES)[number])) {
+    return NextResponse.json({ error: 'Choose a valid workplace county' }, { status: 400 });
+  }
   if (email.length > 254 || (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
     return NextResponse.json({ error: 'Enter a valid email address' }, { status: 400 });
   }
@@ -71,13 +77,14 @@ export async function POST(request: Request) {
   const passwordHash = await bcrypt.hash(password, 12);
   try {
     const user = await prisma.user.create({
-      data: { username, passwordHash, fullName, organisation, email, phone, role },
+      data: { username, passwordHash, fullName, organisation, county, email, phone, role },
       select: {
         id: true,
         username: true,
         fullName: true,
         role: true,
         organisation: true,
+        county: true,
         email: true,
         phone: true,
         status: true,
