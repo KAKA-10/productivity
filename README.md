@@ -18,6 +18,10 @@ For staging and production deployments, apply committed migrations with:
 npm run db:migrate:deploy
 ```
 
+To create the first production administrator, run `npm run admin:create` from the application directory after the production database migration. Node loads the server's `.env` file for `DATABASE_URL`; do not print or share that file. Set `ADMIN_USERNAME`, `ADMIN_FULL_NAME`, `ADMIN_ORGANISATION`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_BOOTSTRAP_CONFIRM=CREATE_ADMIN`, and `NODE_ENV=production` temporarily in the terminal session. The password must be 16–128 characters. The command hashes the password and refuses to create an administrator if one already exists. Do not use the demo seed script in production.
+
+After signing in, use the administrator's User Accounts screen to create workplace users. Set their role to `user`, assign their organisation and county, and provide a new temporary password through the secure form. Do not reuse passwords that have been shared in chat.
+
 Do not use `db:push` or `db:reset` against staging or production. The first migration creates the schema in an empty PostgreSQL database. It does not copy data from the old SQLite development database.
 
 Use a separate database and separate secrets for staging and production. Keep the staging app on a staging hostname until its deployment and workflows have been verified.
