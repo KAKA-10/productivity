@@ -7,6 +7,7 @@ The website can be found at https://productivity.co.ke.
 ## Database setup
 
 Set `DATABASE_URL` in the environment to the PostgreSQL connection string supplied by the host. Keep credentials in the host's environment-variable settings or a local, untracked `.env` file; never commit secrets.
+Set `AUTH_SECRET` to a randomly generated value of at least 32 characters in every deployed environment.
 
 For local development, create and apply migrations with:
 
@@ -20,11 +21,13 @@ For staging and production deployments, apply committed migrations with:
 npm run db:migrate:deploy
 ```
 
-To create the first production administrator, run `npm run admin:create` from the application directory after the production database migration. Node loads the server's `.env` file for `DATABASE_URL` and related variables.
+Before a production migration, take and verify a database backup. Deployments must apply migrations before starting the new application version. Do not run `db:push` or `db:reset` against staging or production.
 
-After signing in, use the administrator's User Accounts screen to create workplace users. Set their role to `user`, assign their organisation and county, and provide a new temporary password through the onboarding workflow.
+The roles-and-branches migration preserves existing records, maps legacy `user` accounts to `workplace_admin`, creates a `Main branch` for each existing client workplace, and promotes the account named `productivityAdmin` (or the oldest remaining `admin`) to `super_admin`. Review that promotion against the production account list before applying the migration, then verify that a Super Admin can sign in afterward.
 
-Do not use `db:push` or `db:reset` against staging or production. The first migration creates the schema in an empty PostgreSQL database. It does not copy data from the old SQLite development database.
+Available roles are `super_admin`, `admin`, `technical`, `trainee`, `client_super_admin`, and `workplace_admin`. Use the administrator's User Accounts screen to create accounts; use Clients & branches and Staff assignments to scope access. Technical and Trainee staff can prepare audit drafts, but an authorised client account must review, type their name, confirm the declaration, and upload the scanned signature to submit. Audit evidence files are stored in PostgreSQL and are included in database backups.
+
+The initial migration creates the schema in an empty PostgreSQL database. It does not copy data from the old SQLite development database.
 
 Use a separate database and separate secrets for staging and production. Keep the staging app on a staging hostname until its deployment and workflows have been verified.
 
