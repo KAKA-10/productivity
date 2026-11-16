@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   const workplaces = await prisma.user.findMany({
-    where: { role: 'user' },
+    where: { role: 'workplace_admin' },
     select: { organisation: true },
     distinct: ['organisation'],
   });

@@ -21,6 +21,8 @@ export type SessionUser = {
   fullName: string;
   role: string;
   organisation: string;
+  organisationId?: string | null;
+  branchId?: string | null;
   county?: string;
   email: string;
   sessionVersion?: number;

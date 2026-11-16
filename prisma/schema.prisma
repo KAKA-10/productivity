@@ -8,25 +8,32 @@ datasource db {
 }
 
 model User {
-  id               String                   @id @default(cuid())
-  username         String                   @unique
-  passwordHash     String
-  fullName         String
-  role             String
-  organisation     String
-  county           String                   @default("Nairobi")
-  email            String
-  phone            String                   @default("")
-  status           String                   @default("active")
-  sessionVersion   Int                      @default(0)
-  pinHash          String?
-  auditAccess      Boolean                  @default(true)
-  unlockedFeatures String                   @default("[\"incidents\",\"risks\",\"jsa\",\"toolbox-talks\",\"compliance\",\"inspections\",\"reports\",\"ppe\",\"fire\",\"personnel\",\"meetings\",\"capa\",\"training-records\"]")
-  createdAt        DateTime                 @default(now())
-  auditSubmission  AuditSubmission?
-  auditVersions    AuditSubmissionVersion[]
-  authSessions     AuthSession[]
-  payments         Payment[]
+  id                 String                   @id @default(cuid())
+  username           String                   @unique
+  passwordHash       String
+  fullName           String
+  role               String
+  organisation       String
+  organisationId     String?
+  branchId           String?
+  county             String                   @default("Nairobi")
+  email              String
+  phone              String                   @default("")
+  status             String                   @default("active")
+  sessionVersion     Int                      @default(0)
+  pinHash            String?
+  auditAccess        Boolean                  @default(true)
+  unlockedFeatures   String                   @default("[\"incidents\",\"risks\",\"jsa\",\"toolbox-talks\",\"compliance\",\"inspections\",\"reports\",\"ppe\",\"fire\",\"personnel\",\"meetings\",\"capa\",\"training-records\"]")
+  createdAt          DateTime                 @default(now())
+  organisationRecord Organisation?            @relation(fields: [organisationId], references: [id], onDelete: SetNull)
+  branch             Branch?                  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  auditSubmission    AuditSubmission[]
+  signedAudits       AuditSubmission[]        @relation("ClientAuditSignatures")
+  auditVersions      AuditSubmissionVersion[]
+  authSessions       AuthSession[]
+  payments           Payment[]
+  assignments        ClientAssignment[]       @relation("AssignedStaff")
+  assignmentsCreated ClientAssignment[]       @relation("AssignmentCreator")
 }
 
 model Payment {
@@ -61,21 +68,100 @@ model AuthSession {
   @@index([userId])
 }
 
+model Organisation {
+  id          String             @id @default(cuid())
+  name        String             @unique
+  status      String             @default("active")
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  users       User[]
+  branches    Branch[]
+  assignments ClientAssignment[]
+  submissions AuditSubmission[]
+}
+
+model Branch {
+  id             String             @id @default(cuid())
+  organisationId String
+  name           String
+  county         String             @default("Nairobi")
+  subCounty      String             @default("")
+  town           String             @default("")
+  poBox          String             @default("")
+  status         String             @default("active")
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  organisation   Organisation       @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  users          User[]
+  assignments    ClientAssignment[]
+  submissions    AuditSubmission[]
+  incidents      Incident[]
+  risks          RiskAssessment[]
+  jsas           Jsa[]
+  toolboxTalks   ToolboxTalk[]
+  compliance     ComplianceItem[]
+  oshAudits      OshAudit[]
+  inspections    Inspection[]
+  ppeRecords     PpeRecord[]
+  fireEquipment  FireEquipment[]
+  personnel      Personnel[]
+  meetings       CommitteeMeeting[]
+  training       TrainingRecord[]
+  capas          Capa[]
+  reminders      Reminder[]
+  emailLogs      EmailLog[]
+  reports        DoshsReport[]
+
+  @@unique([organisationId, name])
+  @@index([organisationId, status])
+}
+
+model ClientAssignment {
+  id             String       @id @default(cuid())
+  staffId        String
+  organisationId String
+  branchId       String?
+  assignedById   String
+  createdAt      DateTime     @default(now())
+  staff          User         @relation("AssignedStaff", fields: [staffId], references: [id], onDelete: Cascade)
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  branch         Branch?      @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  assignedBy     User         @relation("AssignmentCreator", fields: [assignedById], references: [id], onDelete: Restrict)
+
+  @@index([staffId, organisationId])
+  @@index([branchId])
+}
+
 model AuditSubmission {
-  id          String                   @id @default(cuid())
-  reference   String                   @unique
-  userId      String                   @unique
-  user        User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status      String                   @default("draft")
-  responses   String                   @default("{}")
-  findings    String                   @default("{}")
-  version     Int                      @default(0)
-  submittedAt DateTime?
-  reviewedAt  DateTime?
-  createdAt   DateTime                 @default(now())
-  updatedAt   DateTime                 @updatedAt
-  evidence    AuditEvidence[]
-  versions    AuditSubmissionVersion[]
+  id                        String                   @id @default(cuid())
+  reference                 String                   @unique
+  userId                    String
+  user                      User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organisationId            String?
+  organisation              Organisation?            @relation(fields: [organisationId], references: [id], onDelete: SetNull)
+  branchId                  String?
+  branch                    Branch?                  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  status                    String                   @default("draft")
+  responses                 String                   @default("{}")
+  findings                  String                   @default("{}")
+  cycleYear                 String                   @default("")
+  clientSignerId            String?
+  clientSigner              User?                    @relation("ClientAuditSignatures", fields: [clientSignerId], references: [id], onDelete: SetNull)
+  clientSignerName          String?
+  clientSignerRole          String?
+  clientAttestedAt          DateTime?
+  clientDeclaration         Boolean                  @default(false)
+  clientSignatureEvidenceId String?
+  version                   Int                      @default(0)
+  submittedAt               DateTime?
+  reviewedAt                DateTime?
+  createdAt                 DateTime                 @default(now())
+  updatedAt                 DateTime                 @updatedAt
+  evidence                  AuditEvidence[]
+  versions                  AuditSubmissionVersion[]
+
+  @@index([organisationId, branchId, status])
+  @@index([userId, updatedAt])
 }
 
 model AuditEvidence {
@@ -83,7 +169,9 @@ model AuditEvidence {
   submissionId String
   submission   AuditSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
   sectionId    String
+  kind         String          @default("supporting")
   storageKey   String          @unique
+  fileData     Bytes?
   originalName String
   mimeType     String
   byteSize     Int
@@ -131,6 +219,8 @@ model Incident {
   immediateCause String   @default("")
   rootCause      String   @default("")
   organisation   String   @default("")
+  branchId       String?
+  branch         Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -151,6 +241,8 @@ model RiskAssessment {
   legalDuty        String   @default("OSHA 2007 Sec. 6 — Duty of care")
   reviewDate       String   @default("")
   organisation     String   @default("")
+  branchId         String?
+  branch           Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 }
@@ -168,6 +260,8 @@ model Jsa {
   reviewDate     String
   steps          String   @default("[]")
   organisation   String   @default("")
+  branchId       String?
+  branch         Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -184,6 +278,8 @@ model ToolboxTalk {
   status         String
   content        String
   organisation   String   @default("")
+  branchId       String?
+  branch         Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -200,6 +296,8 @@ model ComplianceItem {
   assignedTo   String
   lawReference String
   organisation String   @default("")
+  branchId     String?
+  branch       Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -219,6 +317,8 @@ model OshAudit {
   employeeCount      Int      @default(0)
   oshaSections       String   @default("")
   organisation       String   @default("")
+  branchId           String?
+  branch             Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }
@@ -234,6 +334,8 @@ model Inspection {
   status       String
   findings     String   @default("")
   organisation String   @default("")
+  branchId     String?
+  branch       Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -249,6 +351,8 @@ model PpeRecord {
   expiryDate   String
   status       String
   organisation String   @default("")
+  branchId     String?
+  branch       Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -263,6 +367,8 @@ model FireEquipment {
   nextInspection String
   status         String
   organisation   String   @default("")
+  branchId       String?
+  branch         Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -278,6 +384,8 @@ model Personnel {
   expiryDate   String
   phone        String
   organisation String   @default("")
+  branchId     String?
+  branch       Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -293,6 +401,8 @@ model CommitteeMeeting {
   status       String
   minutes      String
   organisation String   @default("")
+  branchId     String?
+  branch       Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -308,6 +418,8 @@ model TrainingRecord {
   expiryDate   String
   status       String
   organisation String   @default("")
+  branchId     String?
+  branch       Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -324,6 +436,8 @@ model Capa {
   status       String
   description  String
   organisation String   @default("")
+  branchId     String?
+  branch       Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -337,6 +451,8 @@ model Reminder {
   status       String
   body         String
   organisation String   @default("")
+  branchId     String?
+  branch       Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now())
 }
 
@@ -347,6 +463,8 @@ model EmailLog {
   body         String
   status       String
   organisation String   @default("")
+  branchId     String?
+  branch       Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now())
 }
 
@@ -360,6 +478,8 @@ model DoshsReport {
   status       String
   preparedBy   String
   organisation String   @default("")
+  branchId     String?
+  branch       Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }

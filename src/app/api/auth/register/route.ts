@@ -59,35 +59,55 @@ export async function POST(request: Request) {
   const passwordHash = await bcrypt.hash(password, 12);
   const checkoutToken = randomBytes(32).toString('base64url');
   const checkoutExpires = new Date(Date.now() + 30 * 60 * 1000);
+  const existingOrganisation = await prisma.organisation.findUnique({
+    where: { name: organisation },
+    select: { id: true },
+  });
+  if (existingOrganisation) {
+    return NextResponse.json({ error: 'This workplace is already registered. Contact an administrator to add another account or branch.' }, { status: 409 });
+  }
+
   try {
-    const user = await prisma.user.create({
-      data: {
-        username,
-        fullName,
-        organisation,
-        county,
-        email,
-        phone: phoneNumber,
-        passwordHash,
-        role: 'user',
-        status: 'pending_payment',
-        auditAccess: false,
-        unlockedFeatures: '[]',
-        payments: {
-          create: {
-            kind: 'audit_registration',
-            amount: bundle.amount,
-            phoneNumber,
-            items: JSON.stringify(bundle.auditCodes),
-            checkoutTokenHash: hashRefreshToken(checkoutToken),
-            createdAt: new Date(),
+    const user = await prisma.$transaction(async (transaction) => {
+      const organisationRecord = await transaction.organisation.create({
+        data: { name: organisation },
+        select: { id: true },
+      });
+      const branch = await transaction.branch.create({
+        data: { organisationId: organisationRecord.id, name: 'Main branch', county },
+        select: { id: true },
+      });
+      return transaction.user.create({
+        data: {
+          username,
+          fullName,
+          organisation,
+          organisationId: organisationRecord.id,
+          branchId: branch.id,
+          county,
+          email,
+          phone: phoneNumber,
+          passwordHash,
+          role: 'workplace_admin',
+          status: 'pending_payment',
+          auditAccess: false,
+          unlockedFeatures: '[]',
+          payments: {
+            create: {
+              kind: 'audit_registration',
+              amount: bundle.amount,
+              phoneNumber,
+              items: JSON.stringify(bundle.auditCodes),
+              checkoutTokenHash: hashRefreshToken(checkoutToken),
+              createdAt: new Date(),
+            },
           },
         },
-      },
-      select: {
-        id: true,
-        payments: { orderBy: { createdAt: 'desc' }, take: 1, select: { id: true } },
-      },
+        select: {
+          id: true,
+          payments: { orderBy: { createdAt: 'desc' }, take: 1, select: { id: true } },
+        },
+      });
     });
 
     const response = NextResponse.json({
@@ -107,7 +127,7 @@ export async function POST(request: Request) {
     return response;
   } catch (error) {
     if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
-      return NextResponse.json({ error: 'That username is already in use.' }, { status: 409 });
+      return NextResponse.json({ error: 'That username or workplace is already registered.' }, { status: 409 });
     }
     throw error;
   }

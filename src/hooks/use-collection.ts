@@ -2,14 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
-import { cacheList, getCachedList } from '@/lib/offline';
 
 export function useCollection<T extends { id: string }>(resource: string) {
   const [items, setItems] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [offline, setOffline] = useState(false);
-
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -17,16 +14,8 @@ export function useCollection<T extends { id: string }>(resource: string) {
     try {
       const data = await api<T[]>(`/api/data/${resource}`);
       setItems(data);
-      setOffline(false);
-      await cacheList(resource, data);
     } catch (err) {
-      const cached = await getCachedList<T>(resource);
-      if (cached?.length) {
-        setItems(cached);
-        setOffline(true);
-      } else {
-        setError(err instanceof Error ? err.message : 'Failed to load');
-      }
+      setError(err instanceof Error ? err.message : 'Failed to load');
     } finally {
       const wait = Math.max(0, 450 - (Date.now() - started));
       await new Promise((r) => setTimeout(r, wait));
@@ -61,5 +50,5 @@ export function useCollection<T extends { id: string }>(resource: string) {
     setItems((prev) => prev.filter((item) => item.id !== id));
   };
 
-  return { items, loading, error, offline, refresh, create, update, remove, setItems };
+  return { items, loading, error, refresh, create, update, remove, setItems };
 }

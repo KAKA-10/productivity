@@ -64,6 +64,8 @@ export async function getSession(): Promise<SessionUser | null> {
     fullName: user.fullName,
     role: user.role,
     organisation: user.organisation,
+    organisationId: user.organisationId,
+    branchId: user.branchId,
     email: user.email,
     county: user.county,
     sessionVersion: user.sessionVersion,

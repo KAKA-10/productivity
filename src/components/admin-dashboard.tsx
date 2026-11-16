@@ -38,7 +38,7 @@ export function AdminDashboard() {
   }, []);
 
   const waiting = submissions.filter((submission) => ['submitted', 'in_review'].includes(submission.status)).length;
-  const activeUsers = accounts.filter((account) => account.role === 'user' && account.status === 'active').length;
+  const activeUsers = accounts.filter((account) => ['client_super_admin', 'workplace_admin'].includes(account.role) && account.status === 'active').length;
   const reviewed = submissions.filter((submission) => submission.status === 'approved').length;
 
   if (loading) {
@@ -56,7 +56,7 @@ export function AdminDashboard() {
       {error ? <p role="alert" className="rounded-xl border border-clay-200 bg-clay-50 p-4 text-sm text-clay-700">{error}</p> : null}
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard label="Awaiting review" value={waiting} hint="Submitted or in review" icon={FileClock} tone="clay" />
-        <StatCard label="Active workplaces" value={activeUsers} hint="Workplace accounts" icon={UsersRound} />
+        <StatCard label="Active client accounts" value={activeUsers} hint="Client Super Admins and Workplace Admins" icon={UsersRound} />
         <StatCard label="Approved audits" value={reviewed} hint="Completed review" icon={ClipboardCheck} tone="safety" />
       </div>
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { KeyRound, LockKeyhole, Plus, Search, ShieldCheck, UserRound, UserRoundX } from 'lucide-react';
+import { KeyRound, LockKeyhole, Plus, Search, ShieldCheck, Trash2, UserRound, UserRoundX } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/ui/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -10,19 +10,22 @@ import { Field, Select, TextInput } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
 import { strictApi } from '@/lib/strict-api';
 import { KENYAN_COUNTIES } from '@/lib/commerce-catalog';
+import type { AccountRole } from '@/lib/roles';
 
 type Account = {
   id: string;
   username: string;
   fullName: string;
-  role: 'admin' | 'user';
+  role: AccountRole | 'user';
   organisation: string;
+  branchId: string | null;
+  branch: { name: string } | null;
   county: string;
   email: string | null;
   phone: string | null;
-  status: 'active' | 'suspended';
+  status: string;
   createdAt: string;
-  auditSubmission?: { status: string; updatedAt: string } | null;
+  auditSubmission?: { status: string; updatedAt: string }[] | null;
 };
 type NewAccount = {
   username: string;
@@ -32,9 +35,10 @@ type NewAccount = {
   county: string;
   email: string;
   phone: string;
-  role: 'user' | 'admin';
+  role: AccountRole;
+  branchName: string;
 };
-const emptyForm: NewAccount = { username: '', password: '', fullName: '', organisation: '', county: '', email: '', phone: '', role: 'user' };
+const emptyForm: NewAccount = { username: '', password: '', fullName: '', organisation: '', county: 'Nairobi', email: '', phone: '', role: 'workplace_admin', branchName: '' };
 
 export default function AdminUsersPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -48,6 +52,7 @@ export default function AdminUsersPage() {
   const [pinTarget, setPinTarget] = useState<Account | null>(null);
   const [pin, setPin] = useState('');
   const [savingPin, setSavingPin] = useState(false);
+  const [actorRole, setActorRole] = useState('');
 
   const loadAccounts = async () => {
     try {
@@ -59,10 +64,18 @@ export default function AdminUsersPage() {
       setLoading(false);
     }
   };
-  useEffect(() => { void loadAccounts(); }, []);
+  useEffect(() => {
+    void loadAccounts();
+    strictApi<{ user: { role: string } | null }>('/api/auth/session')
+      .then((result) => {
+        if (!result.user) throw new Error('Unable to identify the signed-in administrator');
+        setActorRole(result.user.role);
+      })
+      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Unable to identify the signed-in administrator'));
+  }, []);
 
   const filtered = accounts.filter((account) =>
-    `${account.username} ${account.fullName} ${account.organisation} ${account.county} ${account.role}`.toLowerCase().includes(search.toLowerCase()),
+    `${account.username} ${account.fullName} ${account.organisation} ${account.branch?.name ?? ''} ${account.county} ${account.role}`.toLowerCase().includes(search.toLowerCase()),
   );
   const updateForm = <K extends keyof NewAccount>(key: K, value: NewAccount[K]) => setForm((current) => ({ ...current, [key]: value }));
 
@@ -83,6 +96,7 @@ export default function AdminUsersPage() {
   };
 
   const toggleAccount = async (account: Account) => {
+    if (!['active', 'suspended'].includes(account.status)) return;
     const action = account.status === 'active' ? 'suspend' : 'restore';
     if (!window.confirm(`${action === 'suspend' ? 'Suspend' : 'Restore'} ${account.fullName}'s account?`)) return;
     try {
@@ -103,6 +117,21 @@ export default function AdminUsersPage() {
       toast.error(reason instanceof Error ? reason.message : 'Unable to reset password');
     }
   };
+
+  const deleteAccount = async (account: Account) => {
+    if (!window.confirm(`Deactivate ${account.fullName}'s account? Their records and audit history will be retained.`)) return;
+    try {
+      await strictApi<Account>(`/api/admin/users/${account.id}`, { method: 'DELETE' });
+      toast.success('Account deactivated; its history was retained');
+      await loadAccounts();
+    } catch (reason) {
+      toast.error(reason instanceof Error ? reason.message : 'Unable to deactivate account');
+    }
+  };
+
+  const availableRoles: AccountRole[] = actorRole === 'super_admin'
+    ? ['super_admin', 'admin', 'technical', 'trainee', 'client_super_admin', 'workplace_admin']
+    : ['technical', 'trainee', 'client_super_admin', 'workplace_admin'];
 
   const setAccountPin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -128,8 +157,8 @@ export default function AdminUsersPage() {
       <PageHeader
         eyebrow="Administration"
         title="Account directory"
-        description="Create and manage administrator and workplace access."
-        actions={<Button onClick={() => setShowForm((value) => !value)}><Plus className="h-4 w-4" /> {showForm ? 'Close form' : 'Create account'}</Button>}
+        description="Create role-based access, manage client accounts, and retain an auditable account history."
+        actions={<Button disabled={!actorRole} onClick={() => setShowForm((value) => !value)}><Plus className="h-4 w-4" /> {showForm ? 'Close form' : 'Create account'}</Button>}
       />
       {error ? <p role="alert" className="rounded-xl border border-clay-200 bg-clay-50 p-4 text-sm text-clay-700">{error}</p> : null}
       {showForm ? (
@@ -138,8 +167,9 @@ export default function AdminUsersPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Full name"><TextInput required maxLength={120} value={form.fullName} onChange={(event) => updateForm('fullName', event.target.value)} /></Field>
             <Field label="Username"><TextInput required minLength={3} maxLength={32} autoComplete="off" value={form.username} onChange={(event) => updateForm('username', event.target.value)} /></Field>
-            <Field label="Role"><Select value={form.role} onChange={(event) => updateForm('role', event.target.value as NewAccount['role'])}><option value="user">Workplace user</option><option value="admin">Administrator</option></Select></Field>
-            <Field label="Workplace / organisation"><TextInput required maxLength={160} value={form.organisation} onChange={(event) => updateForm('organisation', event.target.value)} /></Field>
+            <Field label="Role"><Select value={form.role} onChange={(event) => updateForm('role', event.target.value as AccountRole)}>{availableRoles.map((role) => <option key={role} value={role}>{role.replaceAll('_', ' ')}</option>)}</Select></Field>
+            {['client_super_admin', 'workplace_admin'].includes(form.role) ? <Field label="Workplace / organisation"><TextInput required maxLength={160} value={form.organisation} onChange={(event) => updateForm('organisation', event.target.value)} /></Field> : null}
+            {['client_super_admin', 'workplace_admin'].includes(form.role) ? <Field label="Branch"><TextInput maxLength={120} placeholder="Existing branch name or new branch" value={form.branchName} onChange={(event) => updateForm('branchName', event.target.value)} /><span className="text-xs text-slate-500">{form.role === 'client_super_admin' ? 'Leave blank to include all branches.' : 'Enter an existing branch name or create a branch first.'}</span></Field> : null}
             <Field label="Workplace county"><Select required value={form.county} onChange={(event) => updateForm('county', event.target.value)}><option value="">Choose county</option>{KENYAN_COUNTIES.map((county) => <option key={county} value={county}>{county}</option>)}</Select></Field>
             <Field label="Email (optional)"><TextInput type="email" maxLength={254} value={form.email} onChange={(event) => updateForm('email', event.target.value)} /></Field>
             <Field label="Phone (optional)"><TextInput type="tel" maxLength={32} value={form.phone} onChange={(event) => updateForm('phone', event.target.value)} /></Field>
@@ -200,11 +230,11 @@ export default function AdminUsersPage() {
             <tbody className="divide-y divide-slate-100">
               {filtered.map((account) => (
                 <tr key={account.id}>
-                  <td className="px-4 py-4"><p className="font-semibold">{account.fullName}</p><p className="text-xs text-slate-500">@{account.username} · {account.organisation} · {account.county}</p></td>
-                  <td className="px-4 py-4"><span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">{account.role === 'admin' ? <ShieldCheck className="h-4 w-4 text-forest-600" /> : <UserRound className="h-4 w-4" />}{account.role === 'admin' ? 'Administrator' : 'Workplace'}</span></td>
-                  <td className="px-4 py-4 text-xs text-slate-600">{account.auditSubmission ? account.auditSubmission.status.replaceAll('_', ' ') : 'Not started'}</td>
+                  <td className="px-4 py-4"><p className="font-semibold">{account.fullName}</p><p className="text-xs text-slate-500">@{account.username} · {account.organisation || 'Productivity staff'}{account.branch?.name ? ` · ${account.branch.name}` : ''} · {account.county}</p></td>
+                  <td className="px-4 py-4"><span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">{['admin', 'super_admin'].includes(account.role) ? <ShieldCheck className="h-4 w-4 text-forest-600" /> : <UserRound className="h-4 w-4" />}{account.role.replaceAll('_', ' ')}</span></td>
+                  <td className="px-4 py-4 text-xs text-slate-600">{account.auditSubmission?.[0] ? account.auditSubmission[0].status.replaceAll('_', ' ') : 'Not started'}</td>
                   <td className="px-4 py-4"><Badge tone={account.status === 'active' ? 'completed' : 'clay'}>{account.status}</Badge></td>
-                  <td className="px-4 py-4"><div className="flex justify-end gap-1"><Button size="sm" variant="ghost" title="Set or reset unlock PIN" aria-label={`Set unlock PIN for ${account.fullName}`} onClick={() => { setPinTarget(account); setPin(''); }}><LockKeyhole className="h-4 w-4" /></Button><Button size="sm" variant="ghost" title="Generate temporary password" aria-label={`Reset password for ${account.fullName}`} onClick={() => void resetPassword(account)}><KeyRound className="h-4 w-4" /></Button><Button size="sm" variant={account.status === 'active' ? 'warning' : 'secondary'} onClick={() => void toggleAccount(account)}>{account.status === 'active' ? <><UserRoundX className="h-4 w-4" /> Suspend</> : 'Restore'}</Button></div></td>
+                  <td className="px-4 py-4"><div className="flex justify-end gap-1">{account.status !== 'deleted' ? <><Button size="sm" variant="ghost" title="Set or reset unlock PIN" aria-label={`Set unlock PIN for ${account.fullName}`} onClick={() => { setPinTarget(account); setPin(''); }}><LockKeyhole className="h-4 w-4" /></Button><Button size="sm" variant="ghost" title="Generate temporary password" aria-label={`Reset password for ${account.fullName}`} onClick={() => void resetPassword(account)}><KeyRound className="h-4 w-4" /></Button>{['active', 'suspended'].includes(account.status) ? <Button size="sm" variant={account.status === 'active' ? 'warning' : 'secondary'} onClick={() => void toggleAccount(account)}>{account.status === 'active' ? <><UserRoundX className="h-4 w-4" /> Suspend</> : 'Restore'}</Button> : <span className="px-2 py-2 text-xs text-slate-500">{account.status.replaceAll('_', ' ')}</span>}{(actorRole === 'super_admin' || ['technical', 'trainee'].includes(account.role)) ? <Button size="sm" variant="ghost" title="Deactivate account and keep its records" aria-label={`Deactivate ${account.fullName}`} onClick={() => void deleteAccount(account)}><Trash2 className="h-4 w-4 text-clay-700" /></Button> : null}</> : <span className="text-xs text-slate-400">Deactivated</span>}</div></td>
                 </tr>
               ))}
               {!filtered.length ? <tr><td colSpan={5} className="px-4 py-12 text-center text-sm text-slate-500">No accounts match your search.</td></tr> : null}

@@ -59,11 +59,24 @@ export async function POST(request: Request) {
             unlockedFeatures: '[]',
           },
         });
-        const existing = await transaction.auditSubmission.findUnique({ where: { userId: payment.userId } });
+        const cycleYear = String(new Date().getFullYear());
+        const existing = await transaction.auditSubmission.findFirst({
+          where: {
+            organisationId: payment.user.organisationId,
+            branchId: payment.user.branchId,
+            cycleYear,
+          },
+        });
         if (!existing) {
           const count = await transaction.auditSubmission.count();
           const submission = await transaction.auditSubmission.create({
-            data: { userId: payment.userId, reference: nextRef('OSH', count) },
+            data: {
+              userId: payment.userId,
+              organisationId: payment.user.organisationId,
+              branchId: payment.user.branchId,
+              reference: nextRef('OSH', count),
+              cycleYear,
+            },
           });
           await transaction.auditSubmissionVersion.create({
             data: {

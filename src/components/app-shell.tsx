@@ -32,7 +32,8 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ACCESS_TOKEN_TTL_SECONDS, IDLE_TIMEOUT_MS, PIN_LOCK_DELAY_MS } from '@/lib/auth-config';
 import type { SessionUser } from '@/lib/session';
-import { isAdmin } from '@/lib/roles';
+import { isAdmin, isClientAccount, isInternalStaff } from '@/lib/roles';
+import { strictApi } from '@/lib/strict-api';
 import { OfflineBanner } from '@/components/offline-banner';
 import { ReminderBell } from '@/components/reminder-bell';
 import { FeatureAccessPanel } from '@/components/feature-access-panel';
@@ -88,16 +89,12 @@ const ADMIN_GROUPS = [
     items: [
       { href: '/app/admin/audits', label: 'Audit submissions', icon: ClipboardCheck },
       { href: '/app/admin/users', label: 'User accounts', icon: UserRoundCog },
+      { href: '/app/admin/organisations', label: 'Clients & branches', icon: Building2 },
+      { href: '/app/admin/assignments', label: 'Staff assignments', icon: Users },
     ],
   },
 ];
-
-const SITES = [
-  'All sites',
-  'Industrial Area Plant',
-  'Thika Processing Plant',
-  'Athi River Depot',
-];
+type Workspace = { id: string; name: string; organisation: string };
 
 export function AppShell({
   user,
@@ -109,15 +106,17 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const admin = isAdmin(user);
+  const workspaceUser = isClientAccount(user) || isInternalStaff(user);
   const groups = admin ? ADMIN_GROUPS : GROUPS;
   const feature = featureForPath(pathname);
   const auditPage = pathname === '/app/osh-audit' || pathname.startsWith('/app/osh-audit/');
-  const featureLocked = !admin && (
+  const featureLocked = isClientAccount(user) && (
     (auditPage && !user.auditAccess) ||
     (feature !== undefined && !(user.unlockedFeatures ?? []).includes(feature.code))
   );
   const [open, setOpen] = useState(false);
-  const [site, setSite] = useState(SITES[0]);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [activeBranchId, setActiveBranchId] = useState('');
   const [locked, setLocked] = useState(false);
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState('');
@@ -132,6 +131,28 @@ export function AppShell({
   const lockedRef = useRef(false);
   const signedOutRef = useRef(false);
   const sessionChannel = useRef<BroadcastChannel | null>(null);
+
+  useEffect(() => {
+    if (!workspaceUser) return;
+    let active = true;
+    strictApi<Workspace[]>('/api/workspaces')
+      .then((items) => {
+        if (!active) return;
+        setWorkspaces(items);
+        const savedId = window.localStorage.getItem('todomu_active_branch');
+        const selected = items.find((item) => item.id === savedId) ?? items[0];
+        if (selected) {
+          setActiveBranchId(selected.id);
+          window.localStorage.setItem('todomu_active_branch', selected.id);
+          if (savedId !== selected.id) window.location.reload();
+        } else {
+          setActiveBranchId('');
+          window.localStorage.removeItem('todomu_active_branch');
+        }
+      })
+      .catch((reason: unknown) => toast.error(reason instanceof Error ? reason.message : 'Unable to load assigned client branches'));
+    return () => { active = false; };
+  }, [user.id, workspaceUser]);
 
   useEffect(() => {
     let active = true;
@@ -273,6 +294,13 @@ export function AppShell({
     router.refresh();
   };
 
+  const changeBranch = (branchId: string) => {
+    if (!branchId || branchId === activeBranchId) return;
+    if (!window.confirm('Switch branch? Save any open form first; the workspace will reload.')) return;
+    window.localStorage.setItem('todomu_active_branch', branchId);
+    window.location.reload();
+  };
+
   const unlockWithPin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setUnlocking(true);
@@ -367,7 +395,7 @@ export function AppShell({
           <div className="min-w-0">
             <p className="truncate text-sm font-bold text-white">{user.fullName}</p>
             <p className="truncate text-[11px] text-forest-300">
-              {isAdmin(user) ? 'Lead auditor' : 'HSE officer'} · {user.organisation}
+              {admin ? (user.role === 'super_admin' ? 'Super Admin' : 'Productivity Admin') : user.role.replaceAll('_', ' ')} · {user.organisation}
             </p>
           </div>
           <button
@@ -424,28 +452,26 @@ export function AppShell({
             >
               {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
-            {!admin ? (
-              <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700">
-                <Building2 className="h-4 w-4 text-forest-600" />
-                <select
-                  value={site}
-                  onChange={(e) => setSite(e.target.value)}
-                  className="bg-transparent outline-none"
-                >
-                  {SITES.map((s) => (
-                    <option key={s}>{s}</option>
-                  ))}
-                </select>
-              </label>
+            {workspaceUser ? (
+              workspaces.length > 1 ? (
+                <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700">
+                  <Building2 className="h-4 w-4 text-forest-600" />
+                  <select value={activeBranchId} onChange={(event) => changeBranch(event.target.value)} className="max-w-[260px] bg-transparent outline-none">
+                    {workspaces.map((branch) => <option key={branch.id} value={branch.id}>{branch.organisation} · {branch.name}</option>)}
+                  </select>
+                </label>
+              ) : (
+                <span className="truncate text-sm font-semibold text-slate-700">{workspaces[0] ? `${workspaces[0].organisation} · ${workspaces[0].name}` : 'No client branch assigned'}</span>
+              )
             ) : (
               <span className="text-sm font-semibold text-slate-700">Audit administration</span>
             )}
           </div>
           <div className="flex items-center gap-2">
-            {!admin ? <ReminderBell /> : null}
+            {workspaceUser ? <ReminderBell /> : null}
             <span className="inline-flex items-center gap-2 rounded-full border border-forest-200 bg-forest-50 px-2.5 py-1 text-[11px] font-bold text-forest-700">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-forest-500" />
-              {admin ? 'Lead auditor' : 'HSE'} · OSHA 2007
+              {admin ? (user.role === 'super_admin' ? 'Super Admin' : 'Productivity Admin') : user.role.replaceAll('_', ' ')} · OSHA 2007
             </span>
           </div>
         </header>

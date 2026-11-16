@@ -20,6 +20,8 @@ type Submission = {
   totalSections: number;
   evidenceCount: number;
   user: { fullName: string; username: string; organisation: string };
+  branch: { name: string } | null;
+  clientSignerName: string | null;
 };
 const dateLabel = (value: string | null) => value ? new Date(value).toLocaleDateString() : 'Not submitted';
 
@@ -39,7 +41,7 @@ export default function AdminAuditsPage() {
 
   const filtered = rows.filter((row) =>
     (status === 'all' || row.status === status) &&
-    `${row.reference} ${row.user.fullName} ${row.user.organisation} ${row.user.username}`.toLowerCase().includes(query.toLowerCase()),
+    `${row.reference} ${row.user.fullName} ${row.user.organisation} ${row.branch?.name ?? ''} ${row.clientSignerName ?? ''} ${row.user.username}`.toLowerCase().includes(query.toLowerCase()),
   );
 
   return (
@@ -55,7 +57,7 @@ export default function AdminAuditsPage() {
           <table className="w-full min-w-[820px] text-left text-sm">
             <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-500"><tr><th className="px-4 py-3">Workplace</th><th className="px-4 py-3">Progress</th><th className="px-4 py-3">Evidence</th><th className="px-4 py-3">Submitted</th><th className="px-4 py-3">Status</th><th className="px-4 py-3" /></tr></thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map((row) => <tr key={row.id}><td className="px-4 py-4"><p className="font-mono text-[11px] text-slate-400">{row.reference}</p><p className="mt-1 font-semibold">{row.user.organisation}</p><p className="text-xs text-slate-500">{row.user.fullName} · @{row.user.username}</p></td><td className="px-4 py-4"><p className="font-semibold">{row.completion}%</p><p className="text-xs text-slate-500">{row.completedSections} / {row.totalSections} sections</p></td><td className="px-4 py-4">{row.evidenceCount} files</td><td className="px-4 py-4 text-xs text-slate-600">{dateLabel(row.submittedAt)}</td><td className="px-4 py-4"><Badge tone={row.status}>{row.status.replaceAll('_', ' ')}</Badge></td><td className="px-4 py-4 text-right"><Link href={`/app/admin/audits/${row.id}`}><Button size="sm" variant="secondary">Open <ExternalLink className="h-3.5 w-3.5" /></Button></Link></td></tr>)}
+              {filtered.map((row) => <tr key={row.id}><td className="px-4 py-4"><p className="font-mono text-[11px] text-slate-400">{row.reference}</p><p className="mt-1 font-semibold">{row.user.organisation}</p><p className="text-xs text-slate-500">{row.branch?.name ? `${row.branch.name} · ` : ''}{row.user.fullName} · @{row.user.username}</p>{row.clientSignerName ? <p className="mt-1 text-xs text-forest-700">Signed by {row.clientSignerName}</p> : null}</td><td className="px-4 py-4"><p className="font-semibold">{row.completion}%</p><p className="text-xs text-slate-500">{row.completedSections} / {row.totalSections} sections</p></td><td className="px-4 py-4">{row.evidenceCount} files</td><td className="px-4 py-4 text-xs text-slate-600">{dateLabel(row.submittedAt)}</td><td className="px-4 py-4"><Badge tone={row.status}>{row.status.replaceAll('_', ' ')}</Badge></td><td className="px-4 py-4 text-right"><Link href={`/app/admin/audits/${row.id}`}><Button size="sm" variant="secondary">Open <ExternalLink className="h-3.5 w-3.5" /></Button></Link></td></tr>)}
               {!filtered.length ? <tr><td colSpan={6} className="px-4 py-12 text-center text-sm text-slate-500">No submissions match these filters.</td></tr> : null}
             </tbody>
           </table>

@@ -2,30 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { WifiOff } from 'lucide-react';
-import { toast } from 'sonner';
-import { flushQueue, pendingCount } from '@/lib/offline';
 
 export function OfflineBanner() {
   const [online, setOnline] = useState(true);
-  const [pending, setPending] = useState(0);
 
   useEffect(() => {
-    const sync = async () => {
-      setOnline(navigator.onLine);
-      setPending(await pendingCount());
-    };
-    const onOnline = async () => {
-      setOnline(true);
-      try {
-        const n = await flushQueue();
-        if (n) toast.success(`Synced ${n} offline change${n === 1 ? '' : 's'}`);
-      } catch {
-        toast.error('Some offline changes could not sync');
-      }
-      setPending(await pendingCount());
-    };
+    const sync = () => setOnline(navigator.onLine);
+    const onOnline = () => setOnline(true);
     const onOffline = () => setOnline(false);
-    void sync();
+    sync();
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
     return () => {
@@ -34,14 +19,17 @@ export function OfflineBanner() {
     };
   }, []);
 
-  if (online && pending === 0) return null;
+  if (online) return null;
 
   return (
-    <div className="flex items-center gap-2 bg-safety-100 px-4 py-2 text-xs font-semibold text-safety-700">
-      <WifiOff className="h-3.5 w-3.5" />
-      {online
-        ? `${pending} change${pending === 1 ? '' : 's'} waiting to sync`
-        : 'Offline — entries will queue and sync when you reconnect'}
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 p-6 text-center text-white">
+      <div className="max-w-md rounded-3xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur">
+        <WifiOff className="mx-auto h-10 w-10 text-safety-300" />
+        <h1 className="mt-5 text-xl font-bold">Internet connection required</h1>
+        <p className="mt-2 text-sm leading-6 text-slate-300">
+          Productivity OSHAPP is online-only. Reconnect to continue; unsaved changes are not queued offline.
+        </p>
+      </div>
     </div>
   );
 }

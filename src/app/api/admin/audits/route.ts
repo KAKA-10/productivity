@@ -2,16 +2,19 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { getAuditProgress } from '@/lib/audit-template';
+import { canReviewAudits } from '@/lib/roles';
 
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (session.role !== 'admin') return NextResponse.json({ error: 'Administrator access required' }, { status: 403 });
+  if (!canReviewAudits(session)) return NextResponse.json({ error: 'Administrator access required' }, { status: 403 });
 
   const submissions = await prisma.auditSubmission.findMany({
     orderBy: [{ submittedAt: 'desc' }, { updatedAt: 'desc' }],
     include: {
       user: { select: { id: true, username: true, fullName: true, organisation: true, email: true } },
+      organisation: { select: { id: true, name: true } },
+      branch: { select: { id: true, name: true, county: true, subCounty: true, town: true } },
       evidence: { select: { id: true } },
     },
   });
@@ -23,9 +26,14 @@ export async function GET() {
       reference: submission.reference,
       status: submission.status,
       version: submission.version,
+      cycleYear: submission.cycleYear,
       submittedAt: submission.submittedAt,
       updatedAt: submission.updatedAt,
       user: submission.user,
+      organisation: submission.organisation,
+      branch: submission.branch,
+      clientSignerName: submission.clientSignerName,
+      clientAttestedAt: submission.clientAttestedAt,
       completedSections: progress.completed,
       totalSections: progress.total,
       completion: progress.percent,

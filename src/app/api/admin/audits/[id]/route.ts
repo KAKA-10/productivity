@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { AUDIT_SECTIONS, getAuditProgress } from '@/lib/audit-template';
+import { canReviewAudits } from '@/lib/roles';
 
 export async function GET(
   _request: Request,
@@ -9,14 +10,19 @@ export async function GET(
 ) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (session.role !== 'admin') return NextResponse.json({ error: 'Administrator access required' }, { status: 403 });
+  if (!canReviewAudits(session)) return NextResponse.json({ error: 'Administrator access required' }, { status: 403 });
 
   const { id } = await context.params;
   const submission = await prisma.auditSubmission.findUnique({
     where: { id },
     include: {
       user: { select: { id: true, username: true, fullName: true, organisation: true, email: true } },
-      evidence: { orderBy: { uploadedAt: 'desc' } },
+      organisation: { select: { id: true, name: true } },
+      branch: { select: { id: true, name: true, county: true, subCounty: true, town: true } },
+      evidence: {
+        orderBy: { uploadedAt: 'desc' },
+        select: { id: true, sectionId: true, kind: true, originalName: true, mimeType: true, byteSize: true, uploadedAt: true },
+      },
       versions: { orderBy: { version: 'desc' }, take: 20, select: { version: true, action: true, createdAt: true, actor: { select: { username: true } } } },
     },
   });
@@ -37,7 +43,7 @@ export async function PATCH(
 ) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (session.role !== 'admin') return NextResponse.json({ error: 'Administrator access required' }, { status: 403 });
+  if (!canReviewAudits(session)) return NextResponse.json({ error: 'Administrator access required' }, { status: 403 });
 
   const { id } = await context.params;
   const body: unknown = await request.json().catch(() => null);

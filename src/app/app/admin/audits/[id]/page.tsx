@@ -14,7 +14,7 @@ import { strictApi } from '@/lib/strict-api';
 import { AUDIT_SECTIONS, type AuditResponse, type AuditResponses, type AuditSectionId } from '@/lib/audit-template';
 
 type Section = (typeof AUDIT_SECTIONS)[number];
-type Evidence = { id: string; sectionId: string; originalName: string; byteSize: number; uploadedAt: string };
+type Evidence = { id: string; sectionId: string; kind: string; originalName: string; byteSize: number; uploadedAt: string };
 type Submission = {
   id: string;
   reference: string;
@@ -29,6 +29,12 @@ type Submission = {
   sections: Section[];
   evidence: Evidence[];
   user: { username: string; fullName: string; organisation: string; email: string };
+  branch: { name: string; county: string; subCounty: string; town: string } | null;
+  clientSignerName: string | null;
+  clientSignerRole: string | null;
+  clientAttestedAt: string | null;
+  clientDeclaration: boolean;
+  clientSignatureEvidenceId: string | null;
   versions: { version: number; action: string; createdAt: string; actor: { username: string } }[];
 };
 
@@ -92,8 +98,16 @@ export default function AdminAuditReviewPage() {
     const report = {
       reference: submission.reference,
       workplace: submission.user.organisation,
+      branch: submission.branch,
       submittedBy: submission.user.fullName,
       status: submission.status,
+      clientSignOff: {
+        signerName: submission.clientSignerName,
+        signerRole: submission.clientSignerRole,
+        attestedAt: submission.clientAttestedAt,
+        declarationConfirmed: submission.clientDeclaration,
+        scannedSignatureEvidenceId: submission.clientSignatureEvidenceId,
+      },
       responses: submission.sections.map((section) => ({
         category: section.category,
         section: section.title,
@@ -115,7 +129,11 @@ export default function AdminAuditReviewPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Administration · Submission review" title={submission.reference} description={`${submission.user.organisation} · submitted by ${submission.user.fullName} (@${submission.user.username})`} actions={<><Link href="/app/admin/audits"><Button variant="ghost"><ArrowLeft className="h-4 w-4" /> All submissions</Button></Link><Button variant="secondary" onClick={downloadResponses}><Download className="h-4 w-4" /> Download responses</Button></>} />
+      <PageHeader eyebrow="Administration · Submission review" title={submission.reference} description={`${submission.user.organisation}${submission.branch ? ` · ${submission.branch.name}` : ''} · prepared by ${submission.user.fullName} (@${submission.user.username})`} actions={<><Link href="/app/admin/audits"><Button variant="ghost"><ArrowLeft className="h-4 w-4" /> All submissions</Button></Link><Button variant="secondary" onClick={downloadResponses}><Download className="h-4 w-4" /> Download responses</Button></>} />
+      <section className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+        <div><p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Branch location</p><p className="mt-1 font-semibold">{submission.branch?.name ?? 'Branch not recorded'}</p><p className="text-sm text-slate-500">{submission.branch ? [submission.branch.county, submission.branch.subCounty, submission.branch.town].filter(Boolean).join(' · ') : '—'}</p></div>
+        <div><p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Client declaration and signature</p>{submission.clientSignerName ? <><p className="mt-1 font-semibold">{submission.clientSignerName} <span className="font-normal text-slate-500">({submission.clientSignerRole?.replaceAll('_', ' ')})</span></p><p className="text-sm text-slate-500">{submission.clientAttestedAt ? new Date(submission.clientAttestedAt).toLocaleString() : 'Signed time not recorded'} · {submission.clientDeclaration ? 'Declaration confirmed' : 'Declaration not confirmed'}</p>{submission.clientSignatureEvidenceId ? <a className="mt-2 inline-flex text-sm font-semibold text-forest-700 hover:text-forest-900" href={`/api/audit-submission/evidence/${submission.clientSignatureEvidenceId}`}>Download scanned signature</a> : <p className="mt-2 text-sm text-clay-700">Scanned signature is missing.</p>}</> : <p className="mt-1 text-sm text-slate-500">Not signed by a client account.</p>}</div>
+      </section>
       <section className="rounded-2xl border border-slate-200 bg-white p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3"><div className="rounded-xl bg-forest-50 p-3 text-forest-700"><ShieldCheck className="h-5 w-5" /></div><div><div className="flex items-center gap-2"><h2 className="font-bold capitalize">{submission.status.replaceAll('_', ' ')}</h2><Badge tone={submission.status}>{submission.status.replaceAll('_', ' ')}</Badge></div><p className="mt-1 text-xs text-slate-500">{submission.progress.completed} / {submission.progress.total} sections assessed · {submission.evidence.length} evidence files · version {submission.version}</p></div></div>

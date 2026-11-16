@@ -4,6 +4,7 @@ import { FEATURE_PRODUCTS, TRAINING_PACKAGES } from '@/lib/commerce-catalog';
 import { normalizeKenyanPhone } from '@/lib/payment-utils';
 import { getSession } from '@/lib/auth';
 import { canSimulatePayments } from '@/lib/payment-server-config';
+import { isClientAccount } from '@/lib/roles';
 
 export async function POST(request: Request) {
   if (!canSimulatePayments(request)) {
@@ -12,7 +13,7 @@ export async function POST(request: Request) {
 
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Sign in before starting checkout.' }, { status: 401 });
-  if (session.role !== 'user') return NextResponse.json({ error: 'Workplace account required.' }, { status: 403 });
+  if (!isClientAccount(session)) return NextResponse.json({ error: 'Workplace account required.' }, { status: 403 });
 
   const body: unknown = await request.json().catch(() => null);
   if (!body || typeof body !== 'object' || Array.isArray(body)) {

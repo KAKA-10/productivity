@@ -145,7 +145,8 @@ export function hasResourceAccess(
   resource: string,
   user: { role: string; auditAccess?: boolean; unlockedFeatures?: string[] },
 ) {
-  if (user.role === 'admin') return true;
+  if (user.role === 'admin' || user.role === 'super_admin' || user.role === 'technical' || user.role === 'trainee') return true;
+  if (user.role !== 'client_super_admin' && user.role !== 'workplace_admin') return false;
   if (resource === 'audits') return Boolean(user.auditAccess);
   const feature = featureForResource(resource);
   return !feature || (user.unlockedFeatures ?? []).includes(feature.code);

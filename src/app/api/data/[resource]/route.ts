@@ -3,16 +3,16 @@ import { getSession } from '@/lib/auth';
 import { getModel, isResource, RESOURCE_PREFIX } from '@/lib/resources';
 import { nextRef } from '@/lib/utils';
 import { hasResourceAccess } from '@/lib/commerce-catalog';
+import { canEditWorkspace } from '@/lib/roles';
+import { resolveWorkspaceBranch } from '@/lib/workspace-access';
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ resource: string }> },
 ) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (session.role !== 'user') {
-    return NextResponse.json({ error: 'Workplace account required' }, { status: 403 });
-  }
+  if (!canEditWorkspace(session)) return NextResponse.json({ error: 'Workplace or assigned staff access required' }, { status: 403 });
 
   const { resource } = await context.params;
   if (!isResource(resource)) {
@@ -21,12 +21,14 @@ export async function GET(
   if (!hasResourceAccess(resource, session)) {
     return NextResponse.json({ error: 'Purchase this feature to access its workplace records.' }, { status: 402 });
   }
+  const branch = await resolveWorkspaceBranch(session, request.headers.get('x-todomu-branch'));
+  if (!branch) return NextResponse.json({ error: 'Choose an assigned client branch before opening this register.' }, { status: 400 });
 
   const model = getModel(resource) as unknown as {
-    findMany: (args: { where: { organisation: string }; orderBy: { createdAt: 'desc' } }) => Promise<unknown[]>;
+    findMany: (args: { where: { organisation: string; branchId: string }; orderBy: { createdAt: 'desc' } }) => Promise<unknown[]>;
   };
   const items = await model.findMany({
-    where: { organisation: session.organisation },
+    where: { organisation: branch.organisation, branchId: branch.id },
     orderBy: { createdAt: 'desc' },
   });
   return NextResponse.json(items);
@@ -38,9 +40,7 @@ export async function POST(
 ) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (session.role !== 'user') {
-    return NextResponse.json({ error: 'Workplace account required' }, { status: 403 });
-  }
+  if (!canEditWorkspace(session)) return NextResponse.json({ error: 'Workplace or assigned staff access required' }, { status: 403 });
 
   const { resource } = await context.params;
   if (!isResource(resource)) {
@@ -49,6 +49,8 @@ export async function POST(
   if (!hasResourceAccess(resource, session)) {
     return NextResponse.json({ error: 'Purchase this feature to access its workplace records.' }, { status: 402 });
   }
+  const branch = await resolveWorkspaceBranch(session, request.headers.get('x-todomu-branch'));
+  if (!branch) return NextResponse.json({ error: 'Choose an assigned client branch before adding a record.' }, { status: 400 });
 
   const payload = await request.json().catch(() => null);
   if (!payload || typeof payload !== 'object') {
@@ -64,7 +66,8 @@ export async function POST(
   const created = await model.create({
     data: {
       ...rest,
-      organisation: session.organisation,
+      organisation: branch.organisation,
+      branchId: branch.id,
       ref: rest.ref || nextRef(RESOURCE_PREFIX[resource], count),
     },
   });

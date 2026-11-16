@@ -22,6 +22,7 @@ async function main() {
   await prisma.emailLog.deleteMany();
   await prisma.reminder.deleteMany();
   await prisma.doshsReport.deleteMany();
+  await prisma.clientAssignment.deleteMany();
   await prisma.capa.deleteMany();
   await prisma.trainingRecord.deleteMany();
   await prisma.committeeMeeting.deleteMany();
@@ -40,6 +41,18 @@ async function main() {
 
   const adminHash = await bcrypt.hash(developmentAdminPassword, 12);
   const userHash = await bcrypt.hash(developmentUserPassword, 12);
+  const organisation = await prisma.organisation.upsert({
+    where: { name: 'Tafari Millers Ltd' },
+    update: { status: 'active' },
+    create: { name: 'Tafari Millers Ltd' },
+    select: { id: true },
+  });
+  const branch = await prisma.branch.upsert({
+    where: { organisationId_name: { organisationId: organisation.id, name: 'Main branch' } },
+    update: { county: 'Nairobi', status: 'active' },
+    create: { organisationId: organisation.id, name: 'Main branch', county: 'Nairobi' },
+    select: { id: true },
+  });
 
   await prisma.user.createMany({
     data: [
@@ -47,7 +60,7 @@ async function main() {
         username: 'Auditor',
         passwordHash: adminHash,
         fullName: 'Toledo Douglas',
-        role: 'admin',
+        role: 'super_admin',
         organisation: 'Productivity OSHAPP — Lead Auditor',
         email: 'auditor@todomu.co.ke',
       },
@@ -55,8 +68,11 @@ async function main() {
         username: 'tafari_hse',
         passwordHash: userHash,
         fullName: 'Wanjiru Kamau',
-        role: 'user',
+        role: 'workplace_admin',
         organisation: 'Tafari Millers Ltd',
+        organisationId: organisation.id,
+        branchId: branch.id,
+        county: 'Nairobi',
         email: 'hse@tafarimillers.co.ke',
       },
     ],
