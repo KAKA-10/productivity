@@ -2,7 +2,7 @@
 
 Productivity OSHAPP is a Next.js application using Prisma and PostgreSQL.
 
-The website can be found at www.productivity.co.ke.
+The website can be found at https://productivity.co.ke.
 
 ## Database setup
 
