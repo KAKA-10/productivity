@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import {
   AUDIT_SECTIONS,
   getAuditProgress,
-  isAuditEvidenceRequired,
+  getMissingAuditEvidence,
   validateAuditResponses,
   type AuditResponses,
 } from '@/lib/audit-template';
@@ -77,7 +77,7 @@ export async function GET(request: Request) {
   const evidence = await prisma.auditEvidence.findMany({
     where: { submissionId: submission.id },
     orderBy: { uploadedAt: 'desc' },
-    select: { id: true, sectionId: true, kind: true, originalName: true, mimeType: true, byteSize: true, uploadedAt: true },
+    select: { id: true, sectionId: true, fieldKey: true, kind: true, originalName: true, mimeType: true, byteSize: true, uploadedAt: true },
   });
   const responses = parseJson<AuditResponses>(submission.responses);
 
@@ -217,15 +217,15 @@ export async function POST(request: Request) {
   }
   const evidence = await prisma.auditEvidence.findMany({
     where: { submissionId: submission.id },
-    select: { id: true, sectionId: true, kind: true },
+    select: { id: true, sectionId: true, fieldKey: true, kind: true },
   });
-  const missingEvidence = AUDIT_SECTIONS.filter((section) =>
-    isAuditEvidenceRequired(section.id, responses) &&
-    !evidence.some((item) => item.sectionId === section.id && item.kind === 'supporting'),
+  const missingEvidence = getMissingAuditEvidence(
+    responses,
+    evidence.filter((item) => item.kind === 'supporting'),
   );
   if (missingEvidence.length) {
     return NextResponse.json({
-      error: `Attach supporting evidence for: ${missingEvidence.map((section) => section.title).join(', ')}.`,
+      error: `Attach the required evidence: ${missingEvidence.map((item) => `${item.sectionTitle} — ${item.label}`).join('; ')}.`,
     }, { status: 400 });
   }
   const signature = evidence.find((item) => item.id === signatureEvidenceId && item.kind === 'signature' && item.sectionId === 'client-signoff');

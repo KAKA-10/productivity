@@ -11,10 +11,10 @@ import { Button } from '@/components/ui/button';
 import { Field, Textarea } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
 import { strictApi } from '@/lib/strict-api';
-import { AUDIT_SECTIONS, type AuditResponse, type AuditResponses, type AuditSectionId } from '@/lib/audit-template';
+import { AUDIT_SECTIONS, formatAuditAnswer, isOptionalAuditSection, type AuditResponse, type AuditResponses, type AuditSectionId } from '@/lib/audit-template';
 
 type Section = (typeof AUDIT_SECTIONS)[number];
-type Evidence = { id: string; sectionId: string; kind: string; originalName: string; byteSize: number; uploadedAt: string };
+type Evidence = { id: string; sectionId: string; fieldKey: string | null; kind: string; originalName: string; byteSize: number; uploadedAt: string };
 type Submission = {
   id: string;
   reference: string;
@@ -63,7 +63,7 @@ export default function AdminAuditReviewPage() {
   useEffect(() => { void load(); }, [load]);
 
   const canReview = !!submission && ['submitted', 'in_review'].includes(submission.status);
-  const incompleteFindings = useMemo(() => submission?.sections.filter((section) => !findings[section.id]?.trim()).length ?? 0, [findings, submission]);
+  const incompleteFindings = useMemo(() => submission?.sections.filter((section) => !isOptionalAuditSection(section) && !findings[section.id]?.trim()).length ?? 0, [findings, submission]);
   const setFinding = (id: AuditSectionId, value: string) => setFindings((current) => ({ ...current, [id]: value }));
 
   const performAction = async (action: 'start-review' | 'save-findings' | 'approve' | 'return') => {
@@ -73,7 +73,7 @@ export default function AdminAuditReviewPage() {
       return;
     }
     if (action === 'approve' && incompleteFindings) {
-      toast.error(`Record a finding or “No finding” for all sections (${incompleteFindings} remaining)`);
+      toast.error(`Record a finding or “No finding” for all required sections (${incompleteFindings} remaining)`);
       return;
     }
     setBusy(true);
@@ -95,6 +95,18 @@ export default function AdminAuditReviewPage() {
 
   const downloadResponses = () => {
     if (!submission) return;
+    const evidence = submission.evidence.map((item) => {
+      const section = submission.sections.find((candidate) => candidate.id === item.sectionId);
+      const evidenceField = section && 'evidenceFields' in section
+        ? section.evidenceFields?.find((field) => field.key === item.fieldKey)
+        : undefined;
+      return {
+        section: section?.title ?? 'Client sign-off',
+        field: item.kind === 'signature' ? 'Scanned client signature' : evidenceField?.label ?? 'Supporting evidence',
+        fileName: item.originalName,
+        evidenceId: item.id,
+      };
+    });
     const report = {
       reference: submission.reference,
       workplace: submission.user.organisation,
@@ -108,11 +120,18 @@ export default function AdminAuditReviewPage() {
         declarationConfirmed: submission.clientDeclaration,
         scannedSignatureEvidenceId: submission.clientSignatureEvidenceId,
       },
+      evidence,
       responses: submission.sections.map((section) => ({
         category: section.category,
         section: section.title,
         legalReference: section.law,
-        response: submission.responses[section.id] ?? {},
+        response: {
+          ...(submission.responses[section.id] ?? {}),
+          answers: Object.fromEntries(Object.entries(submission.responses[section.id]?.answers ?? {}).map(([key, value]) => {
+            const definition = section.fields.find((item) => item.key === key);
+            return [definition?.label ?? key, formatAuditAnswer(definition, value)];
+          })),
+        },
         finding: findings[section.id] ?? '',
       })),
     };
@@ -136,7 +155,7 @@ export default function AdminAuditReviewPage() {
       </section>
       <section className="rounded-2xl border border-slate-200 bg-white p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3"><div className="rounded-xl bg-forest-50 p-3 text-forest-700"><ShieldCheck className="h-5 w-5" /></div><div><div className="flex items-center gap-2"><h2 className="font-bold capitalize">{submission.status.replaceAll('_', ' ')}</h2><Badge tone={submission.status}>{submission.status.replaceAll('_', ' ')}</Badge></div><p className="mt-1 text-xs text-slate-500">{submission.progress.completed} / {submission.progress.total} sections assessed · {submission.evidence.length} evidence files · version {submission.version}</p></div></div>
+          <div className="flex items-center gap-3"><div className="rounded-xl bg-forest-50 p-3 text-forest-700"><ShieldCheck className="h-5 w-5" /></div><div><div className="flex items-center gap-2"><h2 className="font-bold capitalize">{submission.status.replaceAll('_', ' ')}</h2><Badge tone={submission.status}>{submission.status.replaceAll('_', ' ')}</Badge></div><p className="mt-1 text-xs text-slate-500">{submission.progress.completed} / {submission.progress.total} required sections assessed · {submission.evidence.length} evidence files · version {submission.version}</p></div></div>
           <div className="flex flex-wrap gap-2">
             {submission.status === 'submitted' ? <Button disabled={busy} onClick={() => void performAction('start-review')}><ShieldCheck className="h-4 w-4" /> Start review</Button> : null}
             {submission.status === 'in_review' ? <><Button disabled={busy} variant="secondary" onClick={() => void performAction('save-findings')}><Save className="h-4 w-4" /> Save findings</Button><Button disabled={busy || incompleteFindings > 0} onClick={() => void performAction('approve')}><CheckCheck className="h-4 w-4" /> Approve</Button></> : null}
@@ -155,13 +174,14 @@ export default function AdminAuditReviewPage() {
       {submission.sections.map((section) => {
         const answer: AuditResponse = submission.responses[section.id] ?? {};
         const sectionFiles = submission.evidence.filter((file) => file.sectionId === section.id);
+        const evidenceFields = 'evidenceFields' in section ? section.evidenceFields ?? [] : [];
         return (
           <section key={section.id} className="rounded-2xl border border-slate-200 bg-white p-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><p className="text-[10px] font-bold uppercase tracking-wider text-forest-700">{section.category}</p><h3 className="mt-1 font-bold text-ink">{section.title}</h3><p className="mt-1 text-xs text-slate-500">{section.law}</p></div><Badge tone={answer.assessment === 'compliant' ? 'completed' : answer.assessment === 'needs_attention' ? 'clay' : 'slate'}>{answer.assessment?.replaceAll('_', ' ') || 'not assessed'}</Badge></div>
-            {answer.answers && Object.keys(answer.answers).length ? <dl className="mt-4 grid gap-3 rounded-xl bg-slate-50 p-4 sm:grid-cols-2">{Object.entries(answer.answers).map(([key, value]) => <div key={key}><dt className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{key.replaceAll(/([A-Z])/g, ' $1')}</dt><dd className="mt-1 text-sm text-slate-700">{value || '—'}</dd></div>)}</dl> : null}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><p className="text-[10px] font-bold uppercase tracking-wider text-forest-700">{section.category}</p><h3 className="mt-1 font-bold text-ink">{section.title}{isOptionalAuditSection(section) ? <span className="ml-2 text-xs font-medium text-slate-500">Supplemental · optional</span> : null}</h3><p className="mt-1 text-xs text-slate-500">{section.law}</p></div><Badge tone={answer.assessment === 'compliant' ? 'completed' : answer.assessment === 'needs_attention' ? 'clay' : 'slate'}>{answer.assessment?.replaceAll('_', ' ') || (isOptionalAuditSection(section) ? 'optional' : 'not assessed')}</Badge></div>
+            {answer.answers && Object.keys(answer.answers).length ? <dl className="mt-4 grid gap-3 rounded-xl bg-slate-50 p-4 sm:grid-cols-2">{Object.entries(answer.answers).map(([key, value]) => { const definition = section.fields.find((item) => item.key === key); return <div key={key}><dt className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{definition?.label ?? key.replaceAll(/([A-Z])/g, ' $1')}</dt><dd className="mt-1 text-sm text-slate-700">{formatAuditAnswer(definition, value)}</dd></div>; })}</dl> : null}
             <div className="mt-4 rounded-xl border border-slate-100 p-4"><p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Workplace observations</p><p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{answer.notes || 'No observations provided.'}</p></div>
-            {sectionFiles.length ? <div className="mt-4 space-y-2">{sectionFiles.map((file) => <a key={file.id} href={`/api/audit-submission/evidence/${file.id}`} className="flex items-center gap-2 rounded-lg bg-forest-50 px-3 py-2 text-xs font-medium text-forest-800 hover:bg-forest-100"><FileText className="h-4 w-4" />{file.originalName}<Download className="ml-auto h-4 w-4" /></a>)}</div> : null}
-            <div className="mt-4"><Field label="Administrator finding"><Textarea disabled={!canReview} maxLength={4000} placeholder="Record the finding or enter “No finding”." value={findings[section.id] ?? ''} onChange={(event) => setFinding(section.id, event.target.value)} /></Field></div>
+            {sectionFiles.length ? <div className="mt-4 space-y-2">{sectionFiles.map((file) => { const label = file.kind === 'signature' ? 'Scanned client signature' : evidenceFields.find((item) => item.key === file.fieldKey)?.label ?? 'Supporting evidence'; return <a key={file.id} href={`/api/audit-submission/evidence/${file.id}`} className="flex items-center gap-2 rounded-lg bg-forest-50 px-3 py-2 text-xs font-medium text-forest-800 hover:bg-forest-100"><FileText className="h-4 w-4" /><span className="flex-1"><span className="block text-[10px] font-bold uppercase tracking-wide">{label}</span>{file.originalName}</span><Download className="ml-auto h-4 w-4" /></a>; })}</div> : null}
+            <div className="mt-4"><Field label={isOptionalAuditSection(section) ? 'Administrator finding (optional)' : 'Administrator finding'}><Textarea disabled={!canReview} maxLength={4000} placeholder="Record the finding or enter “No finding”." value={findings[section.id] ?? ''} onChange={(event) => setFinding(section.id, event.target.value)} /></Field></div>
           </section>
         );
       })}

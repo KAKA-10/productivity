@@ -169,6 +169,7 @@ model AuditEvidence {
   submissionId String
   submission   AuditSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
   sectionId    String
+  fieldKey     String?
   kind         String          @default("supporting")
   storageKey   String          @unique
   fileData     Bytes?

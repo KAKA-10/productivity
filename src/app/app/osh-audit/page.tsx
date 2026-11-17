@@ -11,10 +11,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   AUDIT_CATEGORIES,
   AUDIT_SECTIONS,
+  getMissingAuditEvidence,
   getAuditProgress,
-  isAuditEvidenceRequired,
+  isAuditFieldRequired,
+  isOptionalAuditSection,
   isAuditSectionComplete,
+  parseAuditMultiSelect,
   type AuditResponse,
+  type AuditField,
   type AuditResponses,
   type AuditSectionId,
 } from '@/lib/audit-template';
@@ -23,6 +27,7 @@ import { activeWorkspaceHeaders, strictApi } from '@/lib/strict-api';
 type Evidence = {
   id: string;
   sectionId: string;
+  fieldKey: string | null;
   kind: 'supporting' | 'signature';
   originalName: string;
   byteSize: number;
@@ -93,12 +98,7 @@ export default function OshAuditPage() {
   const currentCategory = AUDIT_CATEGORIES.find((item) => item.id === category) ?? AUDIT_CATEGORIES[0];
   const sections = AUDIT_SECTIONS.filter((section) => section.category === currentCategory.id);
   const savedFindings = submission?.findings ?? {};
-  const missingEvidence = submission
-    ? AUDIT_SECTIONS.filter((section) =>
-        isAuditEvidenceRequired(section.id, responses) &&
-        !submission.evidence.some((item) => item.sectionId === section.id && item.kind === 'supporting'),
-      )
-    : [];
+  const missingEvidence = submission ? getMissingAuditEvidence(responses, submission.evidence) : [];
   const signature = submission?.evidence.find((item) =>
     item.kind === 'signature' && item.id === submission.clientSignatureEvidenceId,
   ) ?? submission?.evidence.find((item) => item.kind === 'signature');
@@ -146,13 +146,19 @@ export default function OshAuditPage() {
     }));
   };
 
-  const uploadEvidence = async (sectionId: string, file?: File, kind: 'supporting' | 'signature' = 'supporting') => {
+  const uploadEvidence = async (
+    sectionId: string,
+    file?: File,
+    kind: 'supporting' | 'signature' = 'supporting',
+    fieldKey?: string,
+  ) => {
     if (!file) return;
     setUploading(sectionId);
     try {
       const form = new FormData();
       form.append('sectionId', sectionId);
       form.append('kind', kind);
+      if (fieldKey) form.append('fieldKey', fieldKey);
       form.append('file', file);
       const response = await fetch('/api/audit-submission/evidence', {
         method: 'POST',
@@ -236,7 +242,7 @@ export default function OshAuditPage() {
                 <p className="mt-2 flex items-center gap-1 text-[11px] text-slate-400">{saving ? <Clock3 className="h-3 w-3" /> : <Check className="h-3 w-3" />}{saveMessage}</p>
               </div>
             </div>
-            {missingEvidence.length ? <p className="mt-4 rounded-xl border border-safety-200 bg-safety-50 p-3 text-xs text-safety-900">Supporting documents are required for: {missingEvidence.map((section) => section.title).join(', ')}.</p> : null}
+            {missingEvidence.length ? <p className="mt-4 rounded-xl border border-safety-200 bg-safety-50 p-3 text-xs text-safety-900">Required documents are missing: {missingEvidence.map((item) => `${item.sectionTitle} — ${item.label}`).join('; ')}.</p> : null}
             {savedFindings.__returnNote && ['returned', 'draft'].includes(submission.status) ? <div className="mt-5 rounded-xl border border-safety-200 bg-safety-50 p-4"><p className="text-xs font-bold uppercase tracking-wide text-safety-800">Reviewer feedback</p><p className="mt-1 text-sm text-safety-900">{savedFindings.__returnNote}</p></div> : null}
             {submission.status === 'approved' ? <p className="mt-4 flex items-center gap-2 rounded-xl bg-forest-50 p-3 text-sm font-medium text-forest-800"><CheckCircle2 className="h-4 w-4" /> Your audit has been reviewed and approved.</p> : null}
             {['submitted', 'in_review'].includes(submission.status) ? <p className="mt-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">Your responses are locked while this audit is being reviewed.</p> : null}
@@ -246,11 +252,12 @@ export default function OshAuditPage() {
           <div className="grid gap-2 sm:grid-cols-3">
             {AUDIT_CATEGORIES.map((item) => {
               const sectionsInCategory = AUDIT_SECTIONS.filter((section) => section.category === item.id);
-              const complete = sectionsInCategory.filter((section) => isAuditSectionComplete(section.id, responses)).length;
+              const requiredSections = sectionsInCategory.filter((section) => !isOptionalAuditSection(section));
+              const complete = requiredSections.filter((section) => isAuditSectionComplete(section.id, responses)).length;
               const active = category === item.id;
               return (
                 <button key={item.id} type="button" aria-pressed={active} onClick={() => setCategory(item.id)} className={`rounded-2xl border p-4 text-left transition ${active ? 'border-forest-500 bg-forest-50 shadow-sm' : 'border-slate-200 bg-white hover:border-forest-200'}`}>
-                  <div className="flex items-center justify-between"><span className="text-sm font-bold">{item.title}</span><span className="text-xs font-semibold text-slate-500">{complete}/{sectionsInCategory.length}</span></div>
+                  <div className="flex items-center justify-between"><span className="text-sm font-bold">{item.title}</span><span className="text-xs font-semibold text-slate-500">{complete}/{requiredSections.length} required</span></div>
                   <p className="mt-1 text-xs text-slate-500">{item.description}</p>
                 </button>
               );
@@ -261,54 +268,103 @@ export default function OshAuditPage() {
           <div className="space-y-4">
             {sections.map((section, index) => {
               const response = responses[section.id] ?? {};
-              const evidence = submission.evidence.filter((item) => item.sectionId === section.id && item.kind === 'supporting');
+              const sectionEvidence = submission.evidence.filter((item) => item.sectionId === section.id && item.kind === 'supporting');
+              const evidenceFields = 'evidenceFields' in section ? section.evidenceFields ?? [] : [];
               const group = 'group' in section ? section.group : null;
               const previousSection = index > 0 ? sections[index - 1] : undefined;
               const previousGroup = previousSection && 'group' in previousSection ? previousSection.group : null;
               const showGroup = group && group !== previousGroup;
               const groupTitle = group === 'safety' ? 'Occupational safety at the workplace' : 'Occupational health and hygiene conditions';
+              const optionalSection = isOptionalAuditSection(section);
+              const renderField = (item: AuditField) => {
+                const required = isAuditFieldRequired(section.id, item, response.answers);
+                const value = response.answers?.[item.key] ?? '';
+                const setValue = (nextValue: string) => updateResponse(section.id, { answers: { ...response.answers, [item.key]: nextValue } });
+                if (item.kind === 'multi-select') {
+                  const selected = parseAuditMultiSelect(value);
+                  return (
+                    <fieldset key={item.key} className="rounded-xl border border-slate-200 p-4 sm:col-span-2" disabled={!editable}>
+                      <legend className="px-1 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">{item.label}{required ? ' *' : ''}</legend>
+                      <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {(item.options ?? []).map((option) => {
+                          const checked = selected.includes(option.value);
+                          return (
+                            <label key={option.value} className="flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                              <input
+                                type="checkbox"
+                                className="mt-1 h-4 w-4 accent-forest-700"
+                                checked={checked}
+                                disabled={!editable}
+                                onChange={() => {
+                                  const exclusive = item.exclusiveOptions?.includes(option.value) ?? false;
+                                  const next = exclusive
+                                    ? checked ? [] : [option.value]
+                                    : checked
+                                      ? selected.filter((current) => current !== option.value)
+                                      : [...selected.filter((current) => !item.exclusiveOptions?.includes(current)), option.value];
+                                  setValue(JSON.stringify(next));
+                                }}
+                              />
+                              <span>{option.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </fieldset>
+                  );
+                }
+                return (
+                  <Field key={item.key} label={`${item.label}${required ? ' *' : ''}`}>
+                    {item.kind === 'textarea' ? (
+                      <Textarea required={required} disabled={!editable} maxLength={4000} value={value} onChange={(event) => setValue(event.target.value)} />
+                    ) : item.kind === 'select' ? (
+                      <Select required={required} disabled={!editable} value={value} onChange={(event) => setValue(event.target.value)}>
+                        <option value="">Choose…</option>
+                        {item.allowCustomOption && value && !item.options?.some((option) => option.value === value) ? <option value={value}>{value} (saved response)</option> : null}
+                        {(item.options ?? []).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                      </Select>
+                    ) : (
+                      <TextInput
+                        required={required}
+                        disabled={!editable}
+                        maxLength={item.kind === 'number' || item.kind === 'decimal' ? undefined : 500}
+                        min={item.kind === 'number' ? '0' : undefined}
+                        step={item.kind === 'decimal' ? 'any' : item.kind === 'number' ? '1' : undefined}
+                        type={item.kind === 'decimal' ? 'number' : item.kind}
+                        value={value}
+                        onChange={(event) => setValue(event.target.value)}
+                      />
+                    )}
+                    {item.hint ? <span className="mt-1 block text-[11px] text-slate-500">{item.hint}</span> : null}
+                  </Field>
+                );
+              };
+              const activeFields = section.fields.filter((item) =>
+                !item.legacy ||
+                (section.id === 'workplace-identification' && item.key === 'industry' && response.answers?.industryType === 'Other') ||
+                (section.id === 'contact-details' && item.key === 'otherCountryCode' && response.answers?.countryCode === 'other'),
+              );
+              const legacyFields = section.fields.filter((item) => item.legacy && !activeFields.includes(item));
               return (
                 <Fragment key={section.id}>
                   {showGroup ? <h3 className="pt-4 text-base font-bold text-forest-800">{groupTitle}</h3> : null}
                   <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div><h3 className="font-bold text-ink">{section.title}</h3><p className="mt-1 text-xs text-slate-500">{section.law}</p></div>
-                      <Badge tone={isAuditSectionComplete(section.id, responses) ? 'completed' : 'pending'}>{isAuditSectionComplete(section.id, responses) ? 'Complete' : 'Incomplete'}</Badge>
+                      <div><h3 className="font-bold text-ink">{section.title}{optionalSection ? <span className="ml-2 text-xs font-medium text-slate-500">Supplemental · optional</span> : null}</h3><p className="mt-1 text-xs text-slate-500">{section.law}</p></div>
+                      {optionalSection ? <Badge tone="slate">Optional</Badge> : <Badge tone={isAuditSectionComplete(section.id, responses) ? 'completed' : 'pending'}>{isAuditSectionComplete(section.id, responses) ? 'Complete' : 'Incomplete'}</Badge>}
                     </div>
                     <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                      {section.fields.map((item) => {
-                        const required = item.required || (section.id === 'contact-details' && item.key === 'otherCountryCode' && response.answers?.countryCode === 'other');
-                        const value = response.answers?.[item.key] ?? '';
-                        const setValue = (nextValue: string) => updateResponse(section.id, { answers: { ...response.answers, [item.key]: nextValue } });
-                        return (
-                          <Field key={item.key} label={item.label}>
-                            {item.kind === 'textarea' ? (
-                              <Textarea required={required} disabled={!editable} maxLength={4000} value={value} onChange={(event) => setValue(event.target.value)} />
-                            ) : item.kind === 'select' ? (
-                              <Select required={required} disabled={!editable} value={value} onChange={(event) => setValue(event.target.value)}>
-                                <option value="">Choose…</option>
-                                {(item.options ?? []).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                              </Select>
-                            ) : (
-                              <TextInput
-                                required={required}
-                                disabled={!editable}
-                                maxLength={item.kind === 'number' ? undefined : 500}
-                                min={item.kind === 'number' ? '0' : undefined}
-                                step={item.kind === 'number' ? '1' : undefined}
-                                type={item.kind}
-                                value={value}
-                                onChange={(event) => setValue(event.target.value)}
-                              />
-                            )}
-                            {item.hint ? <span className="mt-1 block text-[11px] text-slate-500">{item.hint}</span> : null}
-                          </Field>
-                        );
-                      })}
+                      {activeFields.map(renderField)}
                     </div>
+                    {legacyFields.length ? (
+                      <details className="mt-4 rounded-xl border border-slate-200 px-4 py-3">
+                        <summary className="cursor-pointer text-sm font-semibold text-slate-600">Supplemental fields (optional)</summary>
+                        <div className="mt-4 grid gap-4 sm:grid-cols-2">{legacyFields.map(renderField)}</div>
+                      </details>
+                    ) : null}
                     <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(220px,0.8fr)_minmax(0,2fr)]">
                       <Field label="Overall assessment">
-                        <Select disabled={!editable} required value={response.assessment ?? ''} onChange={(event) => updateResponse(section.id, { assessment: (event.target.value || undefined) as AuditResponse['assessment'] })}>
+                        <Select disabled={!editable} required={!optionalSection} value={response.assessment ?? ''} onChange={(event) => updateResponse(section.id, { assessment: (event.target.value || undefined) as AuditResponse['assessment'] })}>
                           <option value="">Select assessment…</option><option value="compliant">Compliant</option><option value="needs_attention">Needs attention</option><option value="not_applicable">Not applicable</option>
                         </Select>
                       </Field>
@@ -322,7 +378,24 @@ export default function OshAuditPage() {
                         <div className="flex items-center gap-2 text-xs font-semibold text-slate-600"><Paperclip className="h-4 w-4" /> Supporting evidence <span className="font-normal text-slate-400">PDF, JPEG, PNG or WebP · 10 MB max</span></div>
                         {editable ? <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"><UploadCloud className="h-4 w-4" />{uploading === section.id ? 'Uploading…' : 'Attach file'}<input className="sr-only" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" disabled={uploading === section.id} onChange={(event) => { void uploadEvidence(section.id, event.target.files?.[0]); event.currentTarget.value = ''; }} /></label> : null}
                       </div>
-                      {evidence.length ? <div className="mt-3 space-y-2">{evidence.map((item) => <a key={item.id} href={`/api/audit-submission/evidence/${item.id}`} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 text-xs hover:bg-forest-50"><span className="flex min-w-0 items-center gap-2"><FileText className="h-4 w-4 shrink-0 text-forest-600" /><span className="truncate font-medium">{item.originalName}</span></span><span className="shrink-0 text-slate-400">{formatBytes(item.byteSize)}</span></a>)}</div> : <p className="mt-3 text-xs text-slate-400">No evidence attached to this section.</p>}
+                      {evidenceFields.length ? (
+                        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                          {evidenceFields.map((item) => {
+                            const files = sectionEvidence.filter((file) => file.fieldKey === item.key);
+                            const required = missingEvidence.some((missing) => missing.sectionId === section.id && missing.key === item.key);
+                            const requiredByAnswer = Boolean(item.requiredIf && item.requiredIf.values.includes(response.answers?.[item.requiredIf.answerKey] ?? ''));
+                            return (
+                              <div key={item.key} className="block space-y-1.5">
+                                <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">{item.label}{item.required || requiredByAnswer ? ' *' : ''}</span>
+                                {editable ? <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"><UploadCloud className="h-4 w-4" />{uploading === section.id ? 'Uploading…' : 'Attach document'}<input className="sr-only" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" disabled={uploading === section.id} onChange={(event) => { void uploadEvidence(section.id, event.target.files?.[0], 'supporting', item.key); event.currentTarget.value = ''; }} /></label> : null}
+                                {required ? <span className="block text-[11px] text-clay-700">This document is required before client sign-off.</span> : null}
+                                {files.length ? <div className="mt-2 space-y-2">{files.map((file) => <a key={file.id} href={`/api/audit-submission/evidence/${file.id}`} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 text-xs hover:bg-forest-50"><span className="flex min-w-0 items-center gap-2"><FileText className="h-4 w-4 shrink-0 text-forest-600" /><span className="truncate font-medium">{file.originalName}</span></span><span className="shrink-0 text-slate-400">{formatBytes(file.byteSize)}</span></a>)}</div> : null}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                      {sectionEvidence.some((item) => !item.fieldKey) ? <div className="mt-3 space-y-2">{sectionEvidence.filter((item) => !item.fieldKey).map((item) => <a key={item.id} href={`/api/audit-submission/evidence/${item.id}`} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 text-xs hover:bg-forest-50"><span className="flex min-w-0 items-center gap-2"><FileText className="h-4 w-4 shrink-0 text-forest-600" /><span className="truncate font-medium">{item.originalName}</span></span><span className="shrink-0 text-slate-400">{formatBytes(item.byteSize)}</span></a>)}</div> : null}
                     </div>
                   </section>
                 </Fragment>
@@ -351,7 +424,7 @@ export default function OshAuditPage() {
                 <span>I have reviewed this information and confirm it is true and complete to the best of my knowledge.</span>
               </label>
               <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-                <p className="text-xs text-forest-800">{progress.completed}/{progress.total} sections complete{missingEvidence.length ? ` · ${missingEvidence.length} required evidence item(s) missing` : ''}</p>
+                <p className="text-xs text-forest-800">{progress.completed}/{progress.total} required sections complete{missingEvidence.length ? ` · ${missingEvidence.length} required evidence item(s) missing` : ''}</p>
                 <Button disabled={submitting || progress.completed !== progress.total || missingEvidence.length > 0 || !signature || !declaration || !signerName.trim()} onClick={() => void signAndSubmit()}><Send className="h-4 w-4" />{submitting ? 'Submitting…' : 'Sign and submit for review'}</Button>
               </div>
             </section>

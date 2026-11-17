@@ -27,6 +27,8 @@ The roles-and-branches migration preserves existing records, maps legacy `user` 
 
 Available roles are `super_admin`, `admin`, `technical`, `trainee`, `client_super_admin`, and `workplace_admin`. Use the administrator's User Accounts screen to create accounts; use Clients & branches and Staff assignments to scope access. Technical and Trainee staff can prepare audit drafts, but an authorised client account must review, type their name, confirm the declaration, and upload the scanned signature to submit. Audit evidence files are stored in PostgreSQL and are included in database backups.
 
+The OSHA questionnaire covers Basic details, Safety and health policies, and Safety, health and welfare conditions. Required prompts and evidence follow the reference questionnaire; retained supplemental and legacy fields are optional and do not block sign-off or approval. Answers remain in the submission JSON; the additive `20261117000000_audit_evidence_field_key` migration associates uploaded documents with their individual audit prompts while preserving existing section-level evidence.
+
 The initial migration creates the schema in an empty PostgreSQL database. It does not copy data from the old SQLite development database.
 
 Use a separate database and separate secrets for staging and production. Keep the staging app on a staging hostname until its deployment and workflows have been verified.

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { AUDIT_SECTIONS, type AuditResponses } from '@/lib/audit-template';
+import { AUDIT_SECTIONS, formatAuditAnswer, type AuditResponses } from '@/lib/audit-template';
 import { canReviewAudits } from '@/lib/roles';
 
 function csvCell(value: unknown) {
@@ -20,11 +20,11 @@ export async function GET() {
     include: {
       user: { select: { username: true, fullName: true, organisation: true } },
       branch: { select: { name: true } },
-      evidence: { where: { kind: 'signature' }, select: { originalName: true } },
+      evidence: { select: { sectionId: true, fieldKey: true, kind: true, originalName: true } },
     },
   });
   const rows = [
-    ['Reference', 'Status', 'Username', 'Workplace', 'Organisation', 'Branch', 'Client signer', 'Signer role', 'Declaration confirmed', 'Signed at', 'Scanned signature file', 'Category', 'Section', 'Assessment', 'Answers', 'Notes', 'Finding'],
+    ['Reference', 'Status', 'Username', 'Workplace', 'Organisation', 'Branch', 'Client signer', 'Signer role', 'Declaration confirmed', 'Signed at', 'Scanned signature file', 'Category', 'Section', 'Assessment', 'Answers', 'Notes', 'Finding', 'Evidence files'],
     ...submissions.flatMap((submission) => {
       const responses = JSON.parse(submission.responses) as AuditResponses;
       const findings = JSON.parse(submission.findings) as Record<string, string>;
@@ -39,13 +39,23 @@ export async function GET() {
         submission.clientSignerRole ?? '',
         submission.clientDeclaration ? 'Yes' : 'No',
         submission.clientAttestedAt?.toISOString() ?? '',
-        submission.evidence[0]?.originalName ?? '',
+        submission.evidence.find((item) => item.kind === 'signature')?.originalName ?? '',
         section.category,
         section.title,
         responses[section.id]?.assessment ?? '',
-        JSON.stringify(responses[section.id]?.answers ?? {}),
+        JSON.stringify(Object.fromEntries(Object.entries(responses[section.id]?.answers ?? {}).map(([key, value]) => {
+          const definition = section.fields.find((item) => item.key === key);
+          return [definition?.label ?? key, formatAuditAnswer(definition, value)];
+        }))),
         responses[section.id]?.notes ?? '',
         findings[section.id] ?? '',
+        submission.evidence
+          .filter((item) => item.kind === 'supporting' && item.sectionId === section.id)
+          .map((item) => {
+            const evidenceFields = 'evidenceFields' in section ? section.evidenceFields ?? [] : [];
+            return `${evidenceFields.find((field) => field.key === item.fieldKey)?.label ?? 'Supporting evidence'}: ${item.originalName}`;
+          })
+          .join('; '),
       ]);
     }),
   ];

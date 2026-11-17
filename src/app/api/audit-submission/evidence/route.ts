@@ -29,13 +29,30 @@ export async function POST(request: Request) {
 
   const form = await request.formData();
   const sectionId = form.get('sectionId');
+  const rawFieldKey = form.get('fieldKey');
   const rawKind = form.get('kind');
+  if (rawFieldKey !== null && (typeof rawFieldKey !== 'string' || !rawFieldKey.trim())) {
+    return NextResponse.json({ error: 'Choose a valid evidence field' }, { status: 400 });
+  }
+  const fieldKey = typeof rawFieldKey === 'string' ? rawFieldKey : null;
   if (rawKind !== null && rawKind !== 'supporting' && rawKind !== 'signature') {
     return NextResponse.json({ error: 'Choose a valid evidence type' }, { status: 400 });
   }
   const kind = rawKind === 'signature' ? 'signature' : 'supporting';
   const file = form.get('file');
   const validSection = typeof sectionId === 'string' && AUDIT_SECTIONS.some((section) => section.id === sectionId);
+  const validEvidenceField = !fieldKey || (
+    kind === 'supporting' &&
+    typeof sectionId === 'string' &&
+    AUDIT_SECTIONS.some((section) =>
+      section.id === sectionId &&
+      'evidenceFields' in section &&
+      section.evidenceFields?.some((item) => item.key === fieldKey),
+    )
+  );
+  if (!validEvidenceField) {
+    return NextResponse.json({ error: 'Choose an evidence field from the selected audit section' }, { status: 400 });
+  }
   if (kind === 'signature' && (!canSignClientAudit(session) || sectionId !== 'client-signoff')) {
     return NextResponse.json({ error: 'Only a client account can upload a client signature.' }, { status: 403 });
   }
@@ -78,6 +95,7 @@ export async function POST(request: Request) {
     data: {
       submissionId: submission.id,
       sectionId: sectionId as string,
+      fieldKey,
       kind,
       storageKey,
       fileData: Buffer.from(bytes),
@@ -85,7 +103,7 @@ export async function POST(request: Request) {
       mimeType: file.type,
       byteSize: file.size,
     },
-    select: { id: true, sectionId: true, originalName: true, mimeType: true, byteSize: true, uploadedAt: true },
+    select: { id: true, sectionId: true, fieldKey: true, originalName: true, mimeType: true, byteSize: true, uploadedAt: true },
   });
   return NextResponse.json(evidence, { status: 201 });
 }

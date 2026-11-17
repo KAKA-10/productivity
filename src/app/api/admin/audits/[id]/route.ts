@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { AUDIT_SECTIONS, getAuditProgress } from '@/lib/audit-template';
+import { AUDIT_SECTIONS, getAuditProgress, isOptionalAuditSection } from '@/lib/audit-template';
 import { canReviewAudits } from '@/lib/roles';
 
 export async function GET(
@@ -21,7 +21,7 @@ export async function GET(
       branch: { select: { id: true, name: true, county: true, subCounty: true, town: true } },
       evidence: {
         orderBy: { uploadedAt: 'desc' },
-        select: { id: true, sectionId: true, kind: true, originalName: true, mimeType: true, byteSize: true, uploadedAt: true },
+        select: { id: true, sectionId: true, fieldKey: true, kind: true, originalName: true, mimeType: true, byteSize: true, uploadedAt: true },
       },
       versions: { orderBy: { version: 'desc' }, take: 20, select: { version: true, action: true, createdAt: true, actor: { select: { username: true } } } },
     },
@@ -96,9 +96,9 @@ export async function PATCH(
     nextFindings.__returnNote = returnNote;
   }
   if (action === 'approve') {
-    const incomplete = AUDIT_SECTIONS.filter((section) => !nextFindings[section.id]);
+    const incomplete = AUDIT_SECTIONS.filter((section) => !isOptionalAuditSection(section) && !nextFindings[section.id]);
     if (incomplete.length) {
-      return NextResponse.json({ error: `Record a finding or “No finding” for all sections (${incomplete.length} remaining)` }, { status: 400 });
+      return NextResponse.json({ error: `Record a finding or “No finding” for all required sections (${incomplete.length} remaining)` }, { status: 400 });
     }
   }
 
