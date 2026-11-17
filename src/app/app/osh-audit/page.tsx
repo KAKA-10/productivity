@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Check, CheckCircle2, Clock3, FileText, Paperclip, Send, ShieldCheck, UploadCloud } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Circle, Clock3, FileText, Paperclip, Send, ShieldCheck, UploadCloud } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -65,6 +65,7 @@ export default function OshAuditPage() {
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [responses, setResponses] = useState<AuditResponses>({});
   const [category, setCategory] = useState<string>(AUDIT_CATEGORIES[0].id);
+  const [activeSectionId, setActiveSectionId] = useState<AuditSectionId | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('All changes saved');
@@ -97,6 +98,12 @@ export default function OshAuditPage() {
   const progress = useMemo(() => getAuditProgress(responses), [responses]);
   const currentCategory = AUDIT_CATEGORIES.find((item) => item.id === category) ?? AUDIT_CATEGORIES[0];
   const sections = AUDIT_SECTIONS.filter((section) => section.category === currentCategory.id);
+  const activeSection = sections.find((section) => section.id === activeSectionId) ??
+    sections.find((section) => !isOptionalAuditSection(section) && !isAuditSectionComplete(section.id, responses)) ??
+    sections[0];
+  const activeSectionIndex = activeSection ? sections.findIndex((section) => section.id === activeSection.id) : -1;
+  const conditionSections = AUDIT_SECTIONS.filter((section) => section.category === 'conditions');
+  const finalConditionSection = conditionSections[conditionSections.length - 1];
   const savedFindings = submission?.findings ?? {};
   const missingEvidence = submission ? getMissingAuditEvidence(responses, submission.evidence) : [];
   const signature = submission?.evidence.find((item) =>
@@ -144,6 +151,21 @@ export default function OshAuditPage() {
       ...current,
       [sectionId]: { ...current[sectionId], ...patch },
     }));
+  };
+
+  const chooseCategory = (categoryId: string) => {
+    setCategory(categoryId);
+  };
+
+  const chooseSection = (section: (typeof AUDIT_SECTIONS)[number]) => {
+    setActiveSectionId(section.id);
+  };
+
+  const goToClientSignOff = () => {
+    if (!finalConditionSection) return;
+    setCategory(finalConditionSection.category);
+    setActiveSectionId(finalConditionSection.id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const uploadEvidence = async (
@@ -220,7 +242,7 @@ export default function OshAuditPage() {
         title="Workplace OSH audit"
         description="Complete every required area, attach supporting documents and have an authorised client representative sign before review."
         actions={canSign && editable
-          ? <Button disabled={submitting || progress.completed !== progress.total || missingEvidence.length > 0} onClick={() => void signAndSubmit()}><Send className="h-4 w-4" /> {submitting ? 'Submitting…' : 'Client sign-off'}</Button>
+          ? <Button variant="secondary" onClick={goToClientSignOff}><ArrowRight className="h-4 w-4" /> Review and submit</Button>
           : null}
       />
       {error ? <div role="alert" className="rounded-xl border border-clay-200 bg-clay-50 p-4 text-sm text-clay-700">{error}<Button size="sm" variant="ghost" className="ml-2" onClick={() => void load()}>Try again</Button></div> : null}
@@ -249,24 +271,112 @@ export default function OshAuditPage() {
             {submission.clientSignerName && submission.clientAttestedAt ? <p className="mt-4 rounded-xl bg-forest-50 p-3 text-sm text-forest-800">Signed by {submission.clientSignerName} on {new Date(submission.clientAttestedAt).toLocaleString()}.</p> : null}
           </section>
 
-          <div className="grid gap-2 sm:grid-cols-3">
-            {AUDIT_CATEGORIES.map((item) => {
+          <ol className="grid gap-3 md:grid-cols-3" aria-label="Audit stages">
+            {AUDIT_CATEGORIES.map((item, index) => {
               const sectionsInCategory = AUDIT_SECTIONS.filter((section) => section.category === item.id);
               const requiredSections = sectionsInCategory.filter((section) => !isOptionalAuditSection(section));
               const complete = requiredSections.filter((section) => isAuditSectionComplete(section.id, responses)).length;
               const active = category === item.id;
+              const percent = requiredSections.length ? Math.round((complete / requiredSections.length) * 100) : 0;
               return (
-                <button key={item.id} type="button" aria-pressed={active} onClick={() => setCategory(item.id)} className={`rounded-2xl border p-4 text-left transition ${active ? 'border-forest-500 bg-forest-50 shadow-sm' : 'border-slate-200 bg-white hover:border-forest-200'}`}>
-                  <div className="flex items-center justify-between"><span className="text-sm font-bold">{item.title}</span><span className="text-xs font-semibold text-slate-500">{complete}/{requiredSections.length} required</span></div>
-                  <p className="mt-1 text-xs text-slate-500">{item.description}</p>
-                </button>
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    aria-current={active ? 'step' : undefined}
+                    aria-pressed={active}
+                    onClick={() => chooseCategory(item.id)}
+                    className={`w-full rounded-2xl border p-4 text-left transition duration-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-forest-100 ${active ? 'border-forest-400 bg-white shadow-[0_12px_30px_-18px_rgba(27,67,50,0.65)]' : 'border-slate-200 bg-white/80 hover:border-forest-200 hover:bg-white'}`}
+                  >
+                    <span className="flex items-start gap-3">
+                      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${complete === requiredSections.length ? 'bg-forest-100 text-forest-800' : active ? 'bg-forest-700 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                        {complete === requiredSections.length ? <Check className="h-4 w-4" /> : `0${index + 1}`}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-sm font-bold text-ink">{item.title}</span>
+                          <span className="text-[11px] font-semibold tabular-nums text-slate-500">{complete}/{requiredSections.length}</span>
+                        </span>
+                        <span className="mt-1 block text-xs leading-5 text-slate-500">{item.description}</span>
+                      </span>
+                    </span>
+                    <span className="mt-4 block h-1.5 overflow-hidden rounded-full bg-slate-100">
+                      <span className="block h-full rounded-full bg-forest-600 transition-all duration-500" style={{ width: `${percent}%` }} />
+                    </span>
+                  </button>
+                </li>
               );
             })}
-          </div>
+          </ol>
 
-          <div className="flex items-center justify-between gap-3"><div><h2 className="text-lg font-bold text-ink">{currentCategory.title}</h2><p className="text-xs text-slate-500">{currentCategory.description}</p></div><span className="text-xs text-slate-400">{sections.length} sections</span></div>
-          <div className="space-y-4">
-            {sections.map((section, index) => {
+          <div id="audit-workspace" className="grid scroll-mt-6 items-start gap-5 lg:grid-cols-[250px_minmax(0,1fr)]">
+            <aside className="min-w-0">
+              <div className="rounded-3xl border border-slate-200 bg-white p-3 shadow-sm lg:sticky lg:top-6">
+                <div className="flex items-center justify-between gap-3 px-3 py-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-forest-700">Section guide</p>
+                    <p className="mt-1 text-xs text-slate-500">{currentCategory.title}</p>
+                  </div>
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold tabular-nums text-slate-600">
+                    {activeSectionIndex >= 0 ? activeSectionIndex + 1 : 0}/{sections.length}
+                  </span>
+                </div>
+                <label className="block px-2 pb-3 lg:hidden">
+                  <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Jump to section</span>
+                  <Select
+                    value={activeSection?.id ?? ''}
+                    aria-label={`${currentCategory.title} section`}
+                    onChange={(event) => {
+                      const section = sections.find((item) => item.id === event.target.value);
+                      if (section) chooseSection(section);
+                    }}
+                  >
+                    {sections.map((section) => <option key={section.id} value={section.id}>{section.title}{isOptionalAuditSection(section) ? ' · Optional' : ''}</option>)}
+                  </Select>
+                </label>
+                <nav aria-label={`${currentCategory.title} sections`} className="hidden max-h-[calc(100vh-13rem)] flex-col gap-1 overflow-y-auto lg:flex">
+                  {sections.map((section) => {
+                    const complete = isAuditSectionComplete(section.id, responses);
+                    const optional = isOptionalAuditSection(section);
+                    const active = activeSection?.id === section.id;
+                    return (
+                      <button
+                        key={section.id}
+                        type="button"
+                        aria-current={active ? 'step' : undefined}
+                        onClick={() => chooseSection(section)}
+                        className={`flex items-start gap-3 rounded-2xl border px-3 py-3 text-left transition duration-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-forest-100 ${active ? 'border-forest-300 bg-forest-50/80' : 'border-transparent bg-transparent hover:border-slate-200 hover:bg-slate-50'}`}
+                      >
+                        <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${complete ? 'bg-forest-100 text-forest-700' : active ? 'bg-white text-forest-700' : 'bg-slate-100 text-slate-400'}`}>
+                          {complete ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-3.5 w-3.5" />}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-xs font-semibold leading-5 text-ink">{section.title}</span>
+                          <span className="mt-0.5 block text-[10px] font-medium text-slate-500">
+                            {optional ? 'Supplemental · optional' : complete ? 'Complete' : 'Required · in progress'}
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </nav>
+              </div>
+            </aside>
+
+            <div className="min-w-0 space-y-4">
+              <div className="flex flex-wrap items-end justify-between gap-3 px-1">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-forest-700">
+                    Stage {AUDIT_CATEGORIES.findIndex((item) => item.id === currentCategory.id) + 1} of {AUDIT_CATEGORIES.length}
+                  </p>
+                  <h2 className="mt-1 text-xl font-bold tracking-tight text-ink">{currentCategory.title}</h2>
+                  <p className="mt-1 text-sm text-slate-500">{currentCategory.description}</p>
+                </div>
+                <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold tabular-nums text-slate-600">
+                  Section {activeSectionIndex >= 0 ? activeSectionIndex + 1 : 0} of {sections.length}
+                </span>
+              </div>
+
+              {sections.filter((section) => section.id === activeSection?.id).map((section, index) => {
               const response = responses[section.id] ?? {};
               const sectionEvidence = submission.evidence.filter((item) => item.sectionId === section.id && item.kind === 'supporting');
               const evidenceFields = 'evidenceFields' in section ? section.evidenceFields ?? [] : [];
@@ -310,6 +420,40 @@ export default function OshAuditPage() {
                           );
                         })}
                       </div>
+                    </fieldset>
+                  );
+                }
+                const yesNoOptions = item.options ?? [];
+                const isYesNoChoice = item.kind === 'select' &&
+                  yesNoOptions.length === 3 &&
+                  ['yes', 'no', 'not_applicable'].every((option) => yesNoOptions.some((itemOption) => itemOption.value === option));
+                if (isYesNoChoice) {
+                  return (
+                    <fieldset key={item.key} className="space-y-2" disabled={!editable}>
+                      <legend className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">{item.label}{required ? ' *' : ''}</legend>
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        {yesNoOptions.map((option) => (
+                          <label key={option.value} className="cursor-pointer">
+                            <input
+                              className="peer sr-only"
+                              type="radio"
+                              name={`${section.id}-${item.key}`}
+                              value={option.value}
+                              required={required}
+                              checked={value === option.value}
+                              disabled={!editable}
+                              onChange={() => setValue(option.value)}
+                            />
+                            <span className="flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-forest-200 hover:bg-forest-50/60 peer-checked:border-forest-400 peer-checked:bg-forest-50 peer-checked:text-forest-900 peer-focus-visible:ring-4 peer-focus-visible:ring-forest-100">
+                              <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-current">
+                                {value === option.value ? <span className="h-2 w-2 rounded-full bg-current" /> : null}
+                              </span>
+                              {option.label}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                      {item.hint ? <span className="block text-xs text-slate-500">{item.hint}</span> : null}
                     </fieldset>
                   );
                 }
@@ -401,9 +545,36 @@ export default function OshAuditPage() {
                 </Fragment>
               );
             })}
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                <Button
+                  variant="ghost"
+                  disabled={activeSectionIndex <= 0}
+                  onClick={() => {
+                    const previous = sections[activeSectionIndex - 1];
+                    if (!previous) return;
+                    setActiveSectionId(previous.id);
+                    document.getElementById('audit-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                >
+                  <ArrowLeft className="h-4 w-4" /> Previous section
+                </Button>
+                <p className="hidden text-xs text-slate-500 sm:block">{saving ? 'Saving your progress…' : saveMessage}</p>
+                <Button
+                  disabled={activeSectionIndex < 0 || activeSectionIndex >= sections.length - 1}
+                  onClick={() => {
+                    const next = sections[activeSectionIndex + 1];
+                    if (!next) return;
+                    setActiveSectionId(next.id);
+                    document.getElementById('audit-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                >
+                  Next section <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+          </div>
           </div>
 
-          {canSign && editable ? (
+          {canSign && editable && activeSection?.id === finalConditionSection?.id ? (
             <section className="rounded-2xl border border-forest-200 bg-forest-50 p-5">
               <h2 className="font-bold text-forest-950">Client review and declaration</h2>
               <p className="mt-1 text-sm text-forest-900">The authorised client representative must review the completed audit, upload a scanned signature and submit it. Productivity staff can prepare the draft but cannot sign for the client.</p>
@@ -429,7 +600,7 @@ export default function OshAuditPage() {
               </div>
             </section>
           ) : null}
-          {!canSign && editable ? <p className="rounded-xl border border-safety-200 bg-safety-50 p-4 text-sm text-safety-900">Draft preparation is available to assigned Productivity staff. An authorised client account must upload the scanned signature and sign the declaration before review.</p> : null}
+          {!canSign && editable && activeSection?.id === finalConditionSection?.id ? <p className="rounded-xl border border-safety-200 bg-safety-50 p-4 text-sm text-safety-900">Draft preparation is available to assigned Productivity staff. An authorised client account must upload the scanned signature and sign the declaration before review.</p> : null}
         </>
       ) : null}
     </div>
