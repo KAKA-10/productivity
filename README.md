@@ -23,6 +23,8 @@ npm run db:migrate:deploy
 
 Before a production migration, take and verify a database backup. Deployments must apply migrations before starting the new application version. Do not run `db:push` or `db:reset` against staging or production.
 
+Production builds use Webpack because the hosting server does not provide the native bindings required by Turbopack.
+
 The roles-and-branches migration preserves existing records, maps legacy `user` accounts to `workplace_admin`, creates a `Main branch` for each existing client workplace, and promotes the account named `productivityAdmin` (or the oldest remaining `admin`) to `super_admin`. Review that promotion against the production account list before applying the migration, then verify that a Super Admin can sign in afterward.
 
 Available roles are `super_admin`, `admin`, `technical`, `trainee`, `client_super_admin`, and `workplace_admin`. Use the administrator's User Accounts screen to create accounts; use Clients & branches and Staff assignments to scope access. Technical and Trainee staff can prepare audit drafts, but an authorised client account must review, type their name, confirm the declaration, and upload the scanned signature to submit. Audit evidence files are stored in PostgreSQL and are included in database backups.
