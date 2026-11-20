@@ -541,7 +541,6 @@ type ConditionSectionId =
   | 'chemical-safety'
   | 'plant-safety'
   | 'electrical-safety'
-  | 'fire-safety'
   | 'construction-safety'
   | 'personal-protective-equipment'
   | 'ventilation'
@@ -624,13 +623,6 @@ const conditionSections = [
     'Earthing, circuit protection, safe isolation and electrical work permits',
     'Inspection/testing frequency and competent electrical personnel',
     'Test certificates, defect reports and corrective actions',
-  ]),
-  condition('fire-safety', 'Fire safety', 'Fire Risk Reduction Rules 2007', 'safety', [
-    'Fire hazards, ignition sources and areas of elevated risk',
-    'Combustible materials, blocked exits and fire spread risks',
-    'Fire detection, alarms, extinguishers, exits and fire-fighting controls',
-    'Fire drills, equipment servicing and staff training',
-    'Fire risk assessment, drill records, equipment certificates and actions',
   ]),
   condition('construction-safety', 'Construction safety', 'Building Operations & Works of Engineering Construction Rules 1984', 'safety', [
     'Construction, alteration or maintenance projects and contractors',
@@ -824,22 +816,6 @@ const referenceConditionFields: Partial<Record<ConditionSectionId, readonly Audi
     yesNoField('thermographicSurvey', 'Thermographic survey of panels carried out'),
     yesNoField('generatorSafe', 'Standby generator safely installed, earthed and ventilated'),
     yesNoField('electricalIsolationPermits', 'Electrical isolation permits used for maintenance'),
-  ],
-  'fire-safety': [
-    field('lastFireRiskAssessment', 'Date of last fire risk assessment', 'date'),
-    field('fireExtinguisherCount', 'Number of fire extinguishers', 'number'),
-    field('hoseReelHydrantCount', 'Number of hose reels / hydrants', 'number'),
-    field('lastFireAlarmTest', 'Date alarm was last tested', 'date'),
-    field('meansOfEscape', 'Means of escape, exit signage and emergency lighting', 'select', COMPLIANCE, undefined, true, true),
-    field('trainedFireMarshals', 'Number of trained fire marshals / fire team members', 'number'),
-    field('fireCertificateExpiry', 'Fire certificate expiry date', 'date'),
-    field('fireObservations', 'Observations and corrective action taken', 'textarea'),
-    yesNoField('fireRiskAssessmentByAuditor', 'Fire risk assessment carried out by a registered fire safety auditor'),
-    yesNoField('extinguishersServiced', 'All extinguishers serviced within the last 12 months'),
-    yesNoField('fireDetectionTested', 'Fire detection and alarm system installed and tested'),
-    yesNoField('fireWaterSupply', 'Dedicated firefighting water supply available'),
-    yesNoField('fireExitsClear', 'All exits unobstructed and openable from inside'),
-    yesNoField('countyFireCertificate', 'Valid county fire safety certificate held'),
   ],
   'construction-safety': [
     field('constructionProjects', 'Current or recent projects and their duration', 'textarea'),
@@ -1066,7 +1042,6 @@ const referenceConditionEvidence: Partial<Record<ConditionSectionId, readonly Au
   'chemical-safety': [evidenceField('chemical-records', 'Upload chemical inventory / sample SDS / disposal notes')],
   'plant-safety': [evidenceField('plant-certificates', 'Upload statutory examination certificates', true)],
   'electrical-safety': [evidenceField('electrical-reports', 'Upload electrical test / inspection reports', true)],
-  'fire-safety': [evidenceField('fire-reports', 'Upload fire audit report and county certificate', true)],
   'construction-safety': [evidenceField('construction-records', 'Upload site safety plan / inspection records')],
   'personal-protective-equipment': [evidenceField('ppe-records', 'Upload PPE register extract / supplier certificates')],
   ventilation: [evidenceField('ventilation-reports', 'Upload airflow test / LEV examination report')],
@@ -1085,13 +1060,6 @@ const requiredConditionAnswers: Partial<Record<ConditionSectionId, readonly stri
   'chemical-safety': ['hazardousSubstanceCount', 'chemicalInventoryMaintained', 'safetyDataSheetsHeld'],
   'plant-safety': ['plantExaminedOnTime', 'plantCertificatesHeld'],
   'electrical-safety': ['electricalInstallationCondition', 'earthingTested'],
-  'fire-safety': [
-    'fireRiskAssessmentByAuditor',
-    'fireExtinguisherCount',
-    'extinguishersServiced',
-    'meansOfEscape',
-    'countyFireCertificate',
-  ],
   'construction-safety': ['constructionWorkUndertaken'],
   'personal-protective-equipment': ['ppeTypes', 'ppeProvidedFree', 'ppeRegisterMaintained', 'ppeSuitability'],
   ventilation: ['ventilationAdequacy'],

@@ -6,13 +6,16 @@ import {
   getAuditProgress,
   getMissingAuditEvidence,
   validateAuditResponses,
+  type AuditResponse,
   type AuditResponses,
 } from '@/lib/audit-template';
 import { nextRef } from '@/lib/utils';
 import { canEditWorkspace, canSignClientAudit } from '@/lib/roles';
 import { resolveWorkspaceBranch } from '@/lib/workspace-access';
+import { getLocalPreviewOshAudit, saveLocalPreviewOshAudit } from '@/lib/local-preview';
 
 const currentCycle = () => String(new Date().getFullYear());
+type StoredAuditResponses = AuditResponses & { 'fire-safety'?: AuditResponse };
 
 function parseJson<T>(value: string): T {
   return JSON.parse(value) as T;
@@ -37,6 +40,9 @@ export async function GET(request: Request) {
     if (!session.auditAccess) {
       return NextResponse.json({ error: 'Complete your audit registration payment to access this questionnaire.' }, { status: 402 });
     }
+  }
+  if (session.localAuthBypass) {
+    return NextResponse.json(getLocalPreviewOshAudit(), { headers: { 'Cache-Control': 'private, no-store' } });
   }
 
   const branch = await resolveWorkspaceBranch(session, request.headers.get('x-todomu-branch'));
@@ -79,7 +85,8 @@ export async function GET(request: Request) {
     orderBy: { uploadedAt: 'desc' },
     select: { id: true, sectionId: true, fieldKey: true, kind: true, originalName: true, mimeType: true, byteSize: true, uploadedAt: true },
   });
-  const responses = parseJson<AuditResponses>(submission.responses);
+  const responses = parseJson<StoredAuditResponses>(submission.responses);
+  delete responses['fire-safety'];
 
   return NextResponse.json({
     id: submission.id,
@@ -126,9 +133,12 @@ export async function PATCH(request: Request) {
   if (validation.errors.length) {
     return NextResponse.json({ error: validation.errors[0], details: validation.errors }, { status: 400 });
   }
-  const encoded = JSON.stringify(validation.responses);
-  if (encoded.length > 512_000) {
+  const requestEncoded = JSON.stringify(validation.responses);
+  if (requestEncoded.length > 512_000) {
     return NextResponse.json({ error: 'Audit responses are too large' }, { status: 413 });
+  }
+  if (session.localAuthBypass) {
+    return NextResponse.json({ ok: true, ...saveLocalPreviewOshAudit(validation.responses) });
   }
 
   const { branch, submission } = await getSelectedSubmission(request, session);
@@ -136,6 +146,14 @@ export async function PATCH(request: Request) {
   if (!submission) return NextResponse.json({ error: 'Audit submission not found' }, { status: 404 });
   if (!['draft', 'returned'].includes(submission.status)) {
     return NextResponse.json({ error: 'Submitted audits cannot be edited until they are returned' }, { status: 409 });
+  }
+  const legacyFireSafetyResponse = parseJson<StoredAuditResponses>(submission.responses)['fire-safety'];
+  const responsesToSave: StoredAuditResponses = legacyFireSafetyResponse
+    ? { ...validation.responses, 'fire-safety': legacyFireSafetyResponse }
+    : validation.responses;
+  const encoded = JSON.stringify(responsesToSave);
+  if (encoded.length > 512_000) {
+    return NextResponse.json({ error: 'Audit responses are too large' }, { status: 413 });
   }
   if (submission.responses === encoded) return NextResponse.json({ ok: true, version: submission.version });
 
@@ -163,7 +181,7 @@ export async function PATCH(request: Request) {
         actorId: session.id,
         action: 'draft-save',
         snapshot: JSON.stringify({
-          responses: validation.responses,
+          responses: responsesToSave,
           findings: parseJson<Record<string, string>>(submission.findings),
           status: 'draft',
         }),
@@ -178,6 +196,9 @@ export async function PATCH(request: Request) {
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (session.localAuthBypass) {
+    return NextResponse.json({ error: 'Audit submission is disabled in local preview mode.' }, { status: 501 });
+  }
   if (!canSignClientAudit(session)) {
     return NextResponse.json({ error: 'Only an authorised client account can sign and submit this audit.' }, { status: 403 });
   }

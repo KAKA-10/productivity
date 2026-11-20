@@ -22,6 +22,9 @@ function hasExpectedSignature(mimeType: string, bytes: Uint8Array) {
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (session.localAuthBypass) {
+    return NextResponse.json({ error: 'Evidence uploads are disabled in local preview mode.' }, { status: 501 });
+  }
   if (!canEditWorkspace(session)) return NextResponse.json({ error: 'Workplace or assigned staff access required' }, { status: 403 });
   if (canSignClientAudit(session) && !session.auditAccess) {
     return NextResponse.json({ error: 'Complete your audit registration payment to upload audit evidence.' }, { status: 402 });

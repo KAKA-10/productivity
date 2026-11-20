@@ -9,6 +9,7 @@ import {
   type FireSafetyAuditData,
 } from '@/lib/fire-safety-audit';
 import { resolveWorkspaceBranch } from '@/lib/workspace-access';
+import { getLocalPreviewFireAudit, saveLocalPreviewFireAudit } from '@/lib/local-preview';
 
 const currentCycle = () => String(new Date().getFullYear());
 
@@ -62,6 +63,9 @@ export async function GET(request: Request) {
   if (!hasAuditAccess(session)) {
     return NextResponse.json({ error: 'Complete your audit registration payment to access this questionnaire.' }, { status: 402 });
   }
+  if (session.localAuthBypass) {
+    return NextResponse.json(getLocalPreviewFireAudit(), { headers: { 'Cache-Control': 'private, no-store' } });
+  }
 
   const { branch, audit } = await getSelectedAudit(request, session);
   if (!branch) return NextResponse.json({ error: 'Choose an assigned client branch before opening the fire safety audit.' }, { status: 400 });
@@ -105,6 +109,9 @@ export async function PATCH(request: Request) {
   };
   if (Object.values(encoded).reduce((total, value) => total + value.length, 0) > 512_000) {
     return NextResponse.json({ error: 'Fire safety audit data is too large.' }, { status: 413 });
+  }
+  if (session.localAuthBypass) {
+    return NextResponse.json({ ok: true, ...saveLocalPreviewFireAudit(validation.data) });
   }
 
   const { branch, audit } = await getSelectedAudit(request, session);

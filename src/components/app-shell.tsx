@@ -95,6 +95,15 @@ const ADMIN_GROUPS = [
     ],
   },
 ];
+const LOCAL_PREVIEW_GROUPS = [
+  {
+    label: 'Audit previews',
+    items: [
+      { href: '/app/osh-audit', label: 'OSH Audit', icon: ClipboardCheck },
+      { href: '/app/fire-safety-audit', label: 'Fire Safety Audit', icon: Flame },
+    ],
+  },
+];
 type Workspace = { id: string; name: string; organisation: string };
 
 export function AppShell({
@@ -108,13 +117,13 @@ export function AppShell({
   const router = useRouter();
   const admin = isAdmin(user);
   const workspaceUser = isClientAccount(user) || isInternalStaff(user);
-  const groups = admin ? ADMIN_GROUPS : GROUPS;
+  const groups = user.localAuthBypass ? LOCAL_PREVIEW_GROUPS : admin ? ADMIN_GROUPS : GROUPS;
   const feature = featureForPath(pathname);
   const auditPage = pathname === '/app/osh-audit' ||
     pathname.startsWith('/app/osh-audit/') ||
     pathname === '/app/fire-safety-audit' ||
     pathname.startsWith('/app/fire-safety-audit/');
-  const featureLocked = isClientAccount(user) && (
+  const featureLocked = !user.localAuthBypass && isClientAccount(user) && (
     (auditPage && !user.auditAccess) ||
     (feature !== undefined && !(user.unlockedFeatures ?? []).includes(feature.code))
   );
@@ -159,6 +168,7 @@ export function AppShell({
   }, [user.id, workspaceUser]);
 
   useEffect(() => {
+    if (user.localAuthBypass) return;
     let active = true;
     let refreshTask: Promise<boolean> | null = null;
     let lastBroadcastAt = 0;
@@ -287,7 +297,7 @@ export function AppShell({
       channel?.close();
       sessionChannel.current = null;
     };
-  }, [router, user.pinEnabled]);
+  }, [router, user.localAuthBypass, user.pinEnabled]);
 
   const logout = async () => {
     sessionChannel.current?.postMessage({ type: 'logout' });
@@ -402,14 +412,20 @@ export function AppShell({
               {admin ? (user.role === 'super_admin' ? 'Super Admin' : 'Productivity Admin') : user.role.replaceAll('_', ' ')} · {user.organisation}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => void logout()}
-            className="rounded-xl p-2 text-forest-300 transition hover:bg-white/10 hover:text-white"
-            title="Sign out"
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
+          {user.localAuthBypass ? (
+            <span className="rounded-lg border border-safety-400/30 bg-safety-400/10 px-2 py-1 text-[10px] font-semibold text-safety-300">
+              Local testing
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className="rounded-xl p-2 text-forest-300 transition hover:bg-white/10 hover:text-white"
+              title="Sign out"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
     </>
@@ -472,7 +488,7 @@ export function AppShell({
             )}
           </div>
           <div className="flex items-center gap-2">
-            {workspaceUser ? <ReminderBell /> : null}
+            {workspaceUser && !user.localAuthBypass ? <ReminderBell /> : null}
             <span className="inline-flex items-center gap-2 rounded-full border border-forest-200 bg-forest-50 px-2.5 py-1 text-[11px] font-bold text-forest-700">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-forest-500" />
               {admin ? (user.role === 'super_admin' ? 'Super Admin' : 'Productivity Admin') : user.role.replaceAll('_', ' ')} · OSHA 2007

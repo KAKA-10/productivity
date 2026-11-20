@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { prisma } from './prisma';
 import {
   ACCESS_COOKIE,
@@ -14,6 +14,8 @@ import {
   type SessionUser,
 } from './session';
 import { parseUnlockedFeatures } from './commerce-catalog';
+import { isLocalAuthBypassEnabled } from './local-auth-bypass';
+import { createLocalPreviewSession } from './local-preview';
 
 export type { SessionUser };
 
@@ -54,6 +56,11 @@ export async function getSessionContext() {
 }
 
 export async function getSession(): Promise<SessionUser | null> {
+  const requestHeaders = await headers();
+  if (isLocalAuthBypassEnabled(requestHeaders.get('host'))) {
+    return createLocalPreviewSession();
+  }
+
   const authSession = await getSessionContext();
   if (!authSession) return null;
 

@@ -31,6 +31,7 @@ export type SessionUser = {
   pinEnabled?: boolean;
   auditAccess?: boolean;
   unlockedFeatures?: string[];
+  localAuthBypass?: boolean;
 };
 
 export type AccessTokenClaims = {

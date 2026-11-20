@@ -14,6 +14,9 @@ export async function GET(
 ) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (session.localAuthBypass) {
+    return NextResponse.json({ error: 'Evidence files are unavailable in local preview mode.' }, { status: 404 });
+  }
   if (isClientAccount(session) && !session.auditAccess) {
     return NextResponse.json({ error: 'Complete your audit registration payment to access audit evidence.' }, { status: 402 });
   }
