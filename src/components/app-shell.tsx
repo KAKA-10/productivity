@@ -61,6 +61,7 @@ const GROUPS = [
     items: [
       { href: '/app/compliance-calendar', label: 'Compliance Calendar', icon: CalendarCheck },
       { href: '/app/osh-audit', label: 'OSH Audit', icon: ClipboardCheck },
+      { href: '/app/fire-safety-audit', label: 'Fire Safety Audit', icon: Flame },
       { href: '/app/inspections', label: 'Inspections', icon: Search },
       { href: '/app/reports', label: 'DOSHS Reports', icon: FileText },
     ],
@@ -109,7 +110,10 @@ export function AppShell({
   const workspaceUser = isClientAccount(user) || isInternalStaff(user);
   const groups = admin ? ADMIN_GROUPS : GROUPS;
   const feature = featureForPath(pathname);
-  const auditPage = pathname === '/app/osh-audit' || pathname.startsWith('/app/osh-audit/');
+  const auditPage = pathname === '/app/osh-audit' ||
+    pathname.startsWith('/app/osh-audit/') ||
+    pathname === '/app/fire-safety-audit' ||
+    pathname.startsWith('/app/fire-safety-audit/');
   const featureLocked = isClientAccount(user) && (
     (auditPage && !user.auditAccess) ||
     (feature !== undefined && !(user.unlockedFeatures ?? []).includes(feature.code))

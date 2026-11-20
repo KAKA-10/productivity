@@ -393,7 +393,7 @@ export default function OshAuditPage() {
                 if (item.kind === 'multi-select') {
                   const selected = parseAuditMultiSelect(value);
                   return (
-                    <fieldset key={item.key} className="rounded-xl border border-slate-200 p-4 sm:col-span-2" disabled={!editable}>
+                    <fieldset key={item.key} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 sm:col-span-2" disabled={!editable}>
                       <legend className="px-1 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">{item.label}{required ? ' *' : ''}</legend>
                       <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                         {(item.options ?? []).map((option) => {
@@ -429,7 +429,7 @@ export default function OshAuditPage() {
                   ['yes', 'no', 'not_applicable'].every((option) => yesNoOptions.some((itemOption) => itemOption.value === option));
                 if (isYesNoChoice) {
                   return (
-                    <fieldset key={item.key} className="space-y-2" disabled={!editable}>
+                    <fieldset key={item.key} className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50/60 p-4" disabled={!editable}>
                       <legend className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">{item.label}{required ? ' *' : ''}</legend>
                       <div className="grid gap-2 sm:grid-cols-3">
                         {yesNoOptions.map((option) => (
@@ -458,7 +458,7 @@ export default function OshAuditPage() {
                   );
                 }
                 return (
-                  <Field key={item.key} label={`${item.label}${required ? ' *' : ''}`}>
+                  <Field key={item.key} label={`${item.label}${required ? ' *' : ''}`} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                     {item.kind === 'textarea' ? (
                       <Textarea required={required} disabled={!editable} maxLength={4000} value={value} onChange={(event) => setValue(event.target.value)} />
                     ) : item.kind === 'select' ? (
@@ -492,7 +492,7 @@ export default function OshAuditPage() {
               return (
                 <Fragment key={section.id}>
                   {showGroup ? <h3 className="pt-4 text-base font-bold text-forest-800">{groupTitle}</h3> : null}
-                  <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_12px_36px_-28px_rgba(15,23,42,0.38)] sm:p-6">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div><h3 className="font-bold text-ink">{section.title}{optionalSection ? <span className="ml-2 text-xs font-medium text-slate-500">Supplemental · optional</span> : null}</h3><p className="mt-1 text-xs text-slate-500">{section.law}</p></div>
                       {optionalSection ? <Badge tone="slate">Optional</Badge> : <Badge tone={isAuditSectionComplete(section.id, responses) ? 'completed' : 'pending'}>{isAuditSectionComplete(section.id, responses) ? 'Complete' : 'Incomplete'}</Badge>}
@@ -501,18 +501,18 @@ export default function OshAuditPage() {
                       {activeFields.map(renderField)}
                     </div>
                     {legacyFields.length ? (
-                      <details className="mt-4 rounded-xl border border-slate-200 px-4 py-3">
+                      <details className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
                         <summary className="cursor-pointer text-sm font-semibold text-slate-600">Supplemental fields (optional)</summary>
                         <div className="mt-4 grid gap-4 sm:grid-cols-2">{legacyFields.map(renderField)}</div>
                       </details>
                     ) : null}
                     <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(220px,0.8fr)_minmax(0,2fr)]">
-                      <Field label="Overall assessment">
+                      <Field label="Overall assessment" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                         <Select disabled={!editable} required={!optionalSection} value={response.assessment ?? ''} onChange={(event) => updateResponse(section.id, { assessment: (event.target.value || undefined) as AuditResponse['assessment'] })}>
                           <option value="">Select assessment…</option><option value="compliant">Compliant</option><option value="needs_attention">Needs attention</option><option value="not_applicable">Not applicable</option>
                         </Select>
                       </Field>
-                      <Field label="Observations / corrective actions">
+                      <Field label="Observations / corrective actions" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                         <Textarea disabled={!editable} maxLength={4000} placeholder="Summarise evidence observed, gaps and action needed." value={response.notes ?? ''} onChange={(event) => updateResponse(section.id, { notes: event.target.value })} />
                       </Field>
                     </div>

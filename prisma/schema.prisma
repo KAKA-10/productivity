@@ -29,6 +29,7 @@ model User {
   branch             Branch?                  @relation(fields: [branchId], references: [id], onDelete: SetNull)
   auditSubmission    AuditSubmission[]
   signedAudits       AuditSubmission[]        @relation("ClientAuditSignatures")
+  fireSafetyAudits   FireSafetyAudit[]
   auditVersions      AuditSubmissionVersion[]
   authSessions       AuthSession[]
   payments           Payment[]
@@ -78,6 +79,7 @@ model Organisation {
   branches    Branch[]
   assignments ClientAssignment[]
   submissions AuditSubmission[]
+  fireSafetyAudits FireSafetyAudit[]
 }
 
 model Branch {
@@ -111,6 +113,7 @@ model Branch {
   reminders      Reminder[]
   emailLogs      EmailLog[]
   reports        DoshsReport[]
+  fireSafetyAudits FireSafetyAudit[]
 
   @@unique([organisationId, name])
   @@index([organisationId, status])
@@ -191,6 +194,28 @@ model AuditSubmissionVersion {
   createdAt    DateTime        @default(now())
 
   @@unique([submissionId, version])
+}
+
+model FireSafetyAudit {
+  id                 String        @id @default(cuid())
+  userId             String
+  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organisationId     String?
+  organisation       Organisation? @relation(fields: [organisationId], references: [id], onDelete: SetNull)
+  branchId           String?
+  branch             Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  cycleYear          String
+  employerDetails    String        @default("{}")
+  workersData        String        @default("{}")
+  checklistAnswers   String        @default("{}")
+  furtherInformation String        @default("{}")
+  version            Int           @default(0)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@unique([branchId, cycleYear])
+  @@index([organisationId, branchId, cycleYear])
+  @@index([userId, updatedAt])
 }
 
 model Site {

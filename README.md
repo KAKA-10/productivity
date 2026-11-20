@@ -31,6 +31,8 @@ Available roles are `super_admin`, `admin`, `technical`, `trainee`, `client_supe
 
 The OSHA questionnaire covers Basic details, Safety and health policies, and Safety, health and welfare conditions. Required prompts and evidence follow the reference questionnaire; retained supplemental and legacy fields are optional and do not block sign-off or approval. Answers remain in the submission JSON; the additive `20261117000000_audit_evidence_field_key` migration associates uploaded documents with their individual audit prompts while preserving existing section-level evidence.
 
+Fire Safety Audit is a separate branch-and-year questionnaire below OSH Audit. It records employer and workforce details, 51 fire-safety checklist responses with optional narration, and further-information priorities in its own table. Shared workplace values are prefilled from the active branch and current OSH audit where available, and remain editable in the fire audit. Its additive schema migration is `20261120000000_fire_safety_audit`.
+
 The initial migration creates the schema in an empty PostgreSQL database. It does not copy data from the old SQLite development database.
 
 Use a separate database and separate secrets for staging and production. Keep the staging app on a staging hostname until its deployment and workflows have been verified.
