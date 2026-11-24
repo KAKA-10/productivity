@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { Field, Select, TextInput, Textarea } from '@/components/ui/field';
 import { TableSkeleton } from '@/components/ui/skeleton';
-import { SITES } from '@/lib/resources';
 
 type Risk = {
   id: string;
@@ -31,7 +30,7 @@ type Risk = {
 
 const empty = {
   activity: '',
-  location: SITES[0],
+  location: '',
   hazard: '',
   likelihood: 3,
   severity: 3,
@@ -117,7 +116,7 @@ export default function RiskAssessmentsPage() {
       <Modal open={open} onClose={() => setOpen(false)} title="Digital risk assessment" footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={() => void submit()}>Save</Button></>}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Activity" className="sm:col-span-2"><TextInput value={form.activity} onChange={(e) => setForm({ ...form, activity: e.target.value })} /></Field>
-          <Field label="Location"><Select value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })}>{SITES.map((s) => <option key={s}>{s}</option>)}</Select></Field>
+          <Field label="Work area / location"><TextInput value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} /></Field>
           <Field label="Hazard"><TextInput value={form.hazard} onChange={(e) => setForm({ ...form, hazard: e.target.value })} /></Field>
           <Field label="Likelihood 1–5"><TextInput type="number" min={1} max={5} value={form.likelihood} onChange={(e) => setForm({ ...form, likelihood: Number(e.target.value) })} /></Field>
           <Field label="Severity 1–5"><TextInput type="number" min={1} max={5} value={form.severity} onChange={(e) => setForm({ ...form, severity: Number(e.target.value) })} /></Field>

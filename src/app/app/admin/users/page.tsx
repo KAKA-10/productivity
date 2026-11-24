@@ -47,6 +47,7 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [creatingIntern, setCreatingIntern] = useState(false);
   const [busy, setBusy] = useState(false);
   const [temporaryPassword, setTemporaryPassword] = useState('');
   const [pinTarget, setPinTarget] = useState<Account | null>(null);
@@ -87,6 +88,7 @@ export default function AdminUsersPage() {
       toast.success('Account created');
       setForm(emptyForm);
       setShowForm(false);
+      setCreatingIntern(false);
       await loadAccounts();
     } catch (reason) {
       toast.error(reason instanceof Error ? reason.message : 'Unable to create account');
@@ -130,8 +132,14 @@ export default function AdminUsersPage() {
   };
 
   const availableRoles: AccountRole[] = actorRole === 'super_admin'
-    ? ['super_admin', 'admin', 'technical', 'trainee', 'client_super_admin', 'workplace_admin']
+    ? ['super_admin', 'admin', 'technical', 'trainee', 'intern', 'client_super_admin', 'workplace_admin']
     : ['technical', 'trainee', 'client_super_admin', 'workplace_admin'];
+
+  const openInternForm = () => {
+    setForm({ ...emptyForm, role: 'intern' });
+    setCreatingIntern(true);
+    setShowForm(true);
+  };
 
   const setAccountPin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -158,16 +166,16 @@ export default function AdminUsersPage() {
         eyebrow="Administration"
         title="Account directory"
         description="Create role-based access, manage client accounts, and retain an auditable account history."
-        actions={<Button disabled={!actorRole} onClick={() => setShowForm((value) => !value)}><Plus className="h-4 w-4" /> {showForm ? 'Close form' : 'Create account'}</Button>}
+        actions={<div className="flex flex-wrap gap-2">{actorRole === 'super_admin' ? <Button variant="secondary" disabled={!actorRole} onClick={openInternForm}><Plus className="h-4 w-4" /> Add intern</Button> : null}<Button disabled={!actorRole} onClick={() => { setCreatingIntern(false); setShowForm((value) => !value); }}>{showForm ? 'Close form' : 'Create account'}</Button></div>}
       />
       {error ? <p role="alert" className="rounded-xl border border-clay-200 bg-clay-50 p-4 text-sm text-clay-700">{error}</p> : null}
       {showForm ? (
         <form onSubmit={createAccount} className="rounded-2xl border border-forest-100 bg-white p-5 shadow-sm">
-          <div className="mb-5"><h2 className="font-bold">New account</h2><p className="mt-1 text-xs text-slate-500">Use a unique username, select the workplace county, and set a password of at least 12 characters.</p></div>
+          <div className="mb-5"><h2 className="font-bold">{creatingIntern ? 'Add intern' : 'New account'}</h2><p className="mt-1 text-xs text-slate-500">{creatingIntern ? 'Create an intern account. It will be available in the client assignment list after saving.' : 'Use a unique username, select the workplace county, and set a password of at least 12 characters.'}</p></div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Full name"><TextInput required maxLength={120} value={form.fullName} onChange={(event) => updateForm('fullName', event.target.value)} /></Field>
             <Field label="Username"><TextInput required minLength={3} maxLength={32} autoComplete="off" value={form.username} onChange={(event) => updateForm('username', event.target.value)} /></Field>
-            <Field label="Role"><Select value={form.role} onChange={(event) => updateForm('role', event.target.value as AccountRole)}>{availableRoles.map((role) => <option key={role} value={role}>{role.replaceAll('_', ' ')}</option>)}</Select></Field>
+            {creatingIntern ? <Field label="Role"><TextInput value="Intern" readOnly /></Field> : <Field label="Role"><Select value={form.role} onChange={(event) => updateForm('role', event.target.value as AccountRole)}>{availableRoles.map((role) => <option key={role} value={role}>{role.replaceAll('_', ' ')}</option>)}</Select></Field>}
             {['client_super_admin', 'workplace_admin'].includes(form.role) ? <Field label="Workplace / organisation"><TextInput required maxLength={160} value={form.organisation} onChange={(event) => updateForm('organisation', event.target.value)} /></Field> : null}
             {['client_super_admin', 'workplace_admin'].includes(form.role) ? <Field label="Branch"><TextInput maxLength={120} placeholder="Existing branch name or new branch" value={form.branchName} onChange={(event) => updateForm('branchName', event.target.value)} /><span className="text-xs text-slate-500">{form.role === 'client_super_admin' ? 'Leave blank to include all branches.' : 'Enter an existing branch name or create a branch first.'}</span></Field> : null}
             <Field label="Workplace county"><Select required value={form.county} onChange={(event) => updateForm('county', event.target.value)}><option value="">Choose county</option>{KENYAN_COUNTIES.map((county) => <option key={county} value={county}>{county}</option>)}</Select></Field>
@@ -175,7 +183,7 @@ export default function AdminUsersPage() {
             <Field label="Phone (optional)"><TextInput type="tel" maxLength={32} value={form.phone} onChange={(event) => updateForm('phone', event.target.value)} /></Field>
             <Field label="Initial password"><TextInput required type="password" autoComplete="new-password" minLength={12} maxLength={128} value={form.password} onChange={(event) => updateForm('password', event.target.value)} /></Field>
           </div>
-          <div className="mt-5 flex justify-end"><Button type="submit" disabled={busy}>{busy ? 'Creating…' : 'Create account'}</Button></div>
+          <div className="mt-5 flex justify-end"><Button type="submit" disabled={busy}>{busy ? 'Creating…' : creatingIntern ? 'Create intern' : 'Create account'}</Button></div>
         </form>
       ) : null}
       {temporaryPassword ? (

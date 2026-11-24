@@ -12,6 +12,7 @@ import { Field, Textarea } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
 import { strictApi } from '@/lib/strict-api';
 import { AUDIT_SECTIONS, formatAuditAnswer, isOptionalAuditSection, type AuditResponse, type AuditResponses, type AuditSectionId } from '@/lib/audit-template';
+import { downloadPdf } from '@/lib/pdf';
 
 type Section = (typeof AUDIT_SECTIONS)[number];
 type Evidence = { id: string; sectionId: string; fieldKey: string | null; kind: string; originalName: string; byteSize: number; uploadedAt: string };
@@ -95,52 +96,35 @@ export default function AdminAuditReviewPage() {
 
   const downloadResponses = () => {
     if (!submission) return;
-    const evidence = submission.evidence.map((item) => {
-      const section = submission.sections.find((candidate) => candidate.id === item.sectionId);
-      const evidenceField = section && 'evidenceFields' in section
-        ? section.evidenceFields?.find((field) => field.key === item.fieldKey)
-        : undefined;
-      return {
-        section: section?.title ?? 'Client sign-off',
-        field: item.kind === 'signature' ? 'Scanned client signature' : evidenceField?.label ?? 'Supporting evidence',
-        fileName: item.originalName,
-        evidenceId: item.id,
-      };
-    });
-    const report = {
-      reference: submission.reference,
-      workplace: submission.user.organisation,
-      branch: submission.branch,
-      submittedBy: submission.user.fullName,
-      status: submission.status,
-      clientSignOff: {
-        signerName: submission.clientSignerName,
-        signerRole: submission.clientSignerRole,
-        attestedAt: submission.clientAttestedAt,
-        declarationConfirmed: submission.clientDeclaration,
-        scannedSignatureEvidenceId: submission.clientSignatureEvidenceId,
-      },
-      evidence,
-      responses: submission.sections.map((section) => ({
-        category: section.category,
-        section: section.title,
-        legalReference: section.law,
-        response: {
-          ...(submission.responses[section.id] ?? {}),
-          answers: Object.fromEntries(Object.entries(submission.responses[section.id]?.answers ?? {}).map(([key, value]) => {
-            const definition = section.fields.find((item) => item.key === key);
-            return [definition?.label ?? key, formatAuditAnswer(definition, value)];
-          })),
-        },
-        finding: findings[section.id] ?? '',
-      })),
-    };
-    const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `${submission.reference}-responses.json`;
-    anchor.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const lines = [
+      `Reference: ${submission.reference}`,
+      `Workplace: ${submission.user.organisation}`,
+      `Branch: ${submission.branch?.name ?? 'Not recorded'}`,
+      `Submitted by: ${submission.user.fullName} (@${submission.user.username})`,
+      `Status: ${submission.status}`,
+      `Client signer: ${submission.clientSignerName ?? 'Not recorded'}`,
+      `Signer role: ${submission.clientSignerRole?.replaceAll('_', ' ') ?? 'Not recorded'}`,
+      `Signed at: ${submission.clientAttestedAt ? new Date(submission.clientAttestedAt).toLocaleString() : 'Not recorded'}`,
+      `Declaration confirmed: ${submission.clientDeclaration ? 'Yes' : 'No'}`,
+      '',
+    ];
+    for (const section of submission.sections) {
+      const response = submission.responses[section.id];
+      lines.push(`${section.category} — ${section.title}`, `Legal reference: ${section.law}`, `Assessment: ${response?.assessment ?? 'Not assessed'}`);
+      for (const [key, value] of Object.entries(response?.answers ?? {})) {
+        const definition = section.fields.find((item) => item.key === key);
+        lines.push(`${definition?.label ?? key}: ${formatAuditAnswer(definition, value)}`);
+      }
+      if (response?.notes) lines.push(`Notes: ${response.notes}`);
+      if (findings[section.id]) lines.push(`Finding: ${findings[section.id]}`);
+      for (const file of submission.evidence.filter((item) => item.sectionId === section.id)) {
+        const evidenceFields = 'evidenceFields' in section ? section.evidenceFields ?? [] : [];
+        const field = evidenceFields.find((candidate) => candidate.key === file.fieldKey);
+        lines.push(`Evidence: ${file.kind === 'signature' ? 'Client signature' : field?.label ?? 'Supporting evidence'} — ${file.originalName}`);
+      }
+      lines.push('');
+    }
+    downloadPdf(`${submission.reference}-responses`, `OSH Audit Submission ${submission.reference}`, lines, `Confidential audit submission for ${submission.user.organisation}`);
   };
 
   if (loading) return <div className="space-y-5"><Skeleton className="h-10 w-72" /><Skeleton className="h-40 rounded-2xl" /><Skeleton className="h-96 rounded-2xl" /></div>;
@@ -148,7 +132,7 @@ export default function AdminAuditReviewPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Administration · Submission review" title={submission.reference} description={`${submission.user.organisation}${submission.branch ? ` · ${submission.branch.name}` : ''} · prepared by ${submission.user.fullName} (@${submission.user.username})`} actions={<><Link href="/app/admin/audits"><Button variant="ghost"><ArrowLeft className="h-4 w-4" /> All submissions</Button></Link><Button variant="secondary" onClick={downloadResponses}><Download className="h-4 w-4" /> Download responses</Button></>} />
+      <PageHeader eyebrow="Administration · Submission review" title={submission.reference} description={`${submission.user.organisation}${submission.branch ? ` · ${submission.branch.name}` : ''} · prepared by ${submission.user.fullName} (@${submission.user.username})`} actions={<><Link href="/app/admin/audits"><Button variant="ghost"><ArrowLeft className="h-4 w-4" /> All submissions</Button></Link><Button variant="secondary" onClick={downloadResponses}><Download className="h-4 w-4" /> Download PDF</Button></>} />
       <section className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
         <div><p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Branch location</p><p className="mt-1 font-semibold">{submission.branch?.name ?? 'Branch not recorded'}</p><p className="text-sm text-slate-500">{submission.branch ? [submission.branch.county, submission.branch.subCounty, submission.branch.town].filter(Boolean).join(' · ') : '—'}</p></div>
         <div><p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Client declaration and signature</p>{submission.clientSignerName ? <><p className="mt-1 font-semibold">{submission.clientSignerName} <span className="font-normal text-slate-500">({submission.clientSignerRole?.replaceAll('_', ' ')})</span></p><p className="text-sm text-slate-500">{submission.clientAttestedAt ? new Date(submission.clientAttestedAt).toLocaleString() : 'Signed time not recorded'} · {submission.clientDeclaration ? 'Declaration confirmed' : 'Declaration not confirmed'}</p>{submission.clientSignatureEvidenceId ? <a className="mt-2 inline-flex text-sm font-semibold text-forest-700 hover:text-forest-900" href={`/api/audit-submission/evidence/${submission.clientSignatureEvidenceId}`}>Download scanned signature</a> : <p className="mt-2 text-sm text-clay-700">Scanned signature is missing.</p>}</> : <p className="mt-1 text-sm text-slate-500">Not signed by a client account.</p>}</div>

@@ -38,7 +38,7 @@ export default function AdminAssignmentsPage() {
         strictApi<Organisation[]>('/api/admin/organisations'),
         strictApi<Assignment[]>('/api/admin/assignments'),
       ]);
-      const activeStaff = accounts.filter((account) => ['technical', 'trainee'].includes(account.role) && account.status === 'active');
+      const activeStaff = accounts.filter((account) => ['technical', 'trainee', 'intern'].includes(account.role) && account.status === 'active');
       const activeOrganisations = clients.filter((organisation) => organisation.status === 'active');
       setStaff(activeStaff);
       setOrganisations(activeOrganisations);
@@ -98,12 +98,12 @@ export default function AdminAssignmentsPage() {
       <PageHeader
         eyebrow="Administration"
         title="Staff assignments"
-        description="Give Technical and Trainee staff access to a complete client workplace or selected branches."
+        description="Give Technical staff, trainees, and interns access to a complete client workplace or selected branches."
       />
       {error ? <p role="alert" className="rounded-xl border border-clay-200 bg-clay-50 p-4 text-sm text-clay-700">{error}</p> : null}
       <form onSubmit={createAssignment} className="grid gap-4 rounded-2xl border border-forest-100 bg-white p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
         <div className="sm:col-span-2 lg:col-span-4"><h2 className="font-bold">Create assignment</h2><p className="mt-1 text-xs text-slate-500">Selecting all branches grants access to the entire client organisation.</p></div>
-        <Field label="Technical or Trainee staff"><Select required value={staffId} onChange={(event) => setStaffId(event.target.value)}><option value="">Choose staff member</option>{staff.map((account) => <option key={account.id} value={account.id}>{account.fullName} · {account.role}</option>)}</Select></Field>
+        <Field label="Staff member or intern"><Select required value={staffId} onChange={(event) => setStaffId(event.target.value)}><option value="">Choose a person</option>{staff.map((account) => <option key={account.id} value={account.id}>{account.fullName} · {account.role.replaceAll('_', ' ')}</option>)}</Select></Field>
         <Field label="Client workplace"><Select required value={organisationId} onChange={(event) => { setOrganisationId(event.target.value); setBranchId(''); }}><option value="">Choose client</option>{organisations.map((organisation) => <option key={organisation.id} value={organisation.id}>{organisation.name}</option>)}</Select></Field>
         <Field label="Branch scope"><Select value={branchId} onChange={(event) => setBranchId(event.target.value)}><option value="">All branches</option>{activeBranches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</Select></Field>
         <div className="flex items-end"><Button type="submit" disabled={saving || !staffId || !organisationId}><ArrowRightLeft className="h-4 w-4" />{saving ? 'Assigning…' : 'Assign client'}</Button></div>

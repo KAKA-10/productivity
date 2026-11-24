@@ -12,7 +12,7 @@ import { Modal } from '@/components/ui/modal';
 import { Field, Select, TextInput } from '@/components/ui/field';
 import { EmptyState } from '@/components/ui/empty-state';
 import { TableSkeleton } from '@/components/ui/skeleton';
-import { SITES } from '@/lib/resources';
+import { ActiveBranchField } from '@/components/active-branch-field';
 import { formatDate } from '@/lib/utils';
 
 type Person = {
@@ -30,7 +30,7 @@ type Person = {
 const emptyForm = {
   name: '',
   role: 'First Aider',
-  site: SITES[0],
+  site: '',
   department: '',
   certificate: '',
   expiryDate: '',
@@ -119,7 +119,7 @@ export default function PersonnelPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Full name"><TextInput required maxLength={120} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>
           <Field label="Emergency role"><Select value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value })}>{['First Aider', 'Fire Marshal', 'Safety Officer', 'Other'].map((role) => <option key={role}>{role}</option>)}</Select></Field>
-          <Field label="Worksite"><Select value={form.site} onChange={(event) => setForm({ ...form, site: event.target.value })}>{SITES.map((site) => <option key={site}>{site}</option>)}</Select></Field>
+          <ActiveBranchField label="Worksite" />
           <Field label="Department"><TextInput maxLength={120} value={form.department} onChange={(event) => setForm({ ...form, department: event.target.value })} /></Field>
           <Field label="Certificate / qualification"><TextInput required maxLength={160} value={form.certificate} onChange={(event) => setForm({ ...form, certificate: event.target.value })} /></Field>
           <Field label="Certificate expiry"><TextInput required type="date" value={form.expiryDate} onChange={(event) => setForm({ ...form, expiryDate: event.target.value })} /></Field>

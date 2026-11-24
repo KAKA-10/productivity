@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import type { SessionUser } from '@/lib/session';
-import { isClientAccount, isInternalStaff } from '@/lib/roles';
+import { isClientAccount, isInternalStaff, isSuperAdmin } from '@/lib/roles';
 
 export type WorkspaceBranch = {
   id: string;
@@ -36,6 +36,14 @@ function toWorkspaceBranch(branch: {
 }
 
 export async function getAccessibleBranches(session: SessionUser): Promise<WorkspaceBranch[]> {
+  if (isSuperAdmin(session)) {
+    const branches = await prisma.branch.findMany({
+      where: { status: 'active', organisation: { status: 'active' } },
+      include: { organisation: { select: { name: true } } },
+      orderBy: [{ organisation: { name: 'asc' } }, { name: 'asc' }],
+    });
+    return branches.map(toWorkspaceBranch);
+  }
   if (!isClientAccount(session) && !isInternalStaff(session)) return [];
 
   if (session.role === 'client_super_admin' && session.organisationId) {

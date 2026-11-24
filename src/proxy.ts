@@ -10,12 +10,8 @@ export function proxy(request: NextRequest) {
       pathname.startsWith('/app/osh-audit/') ||
       pathname === '/app/fire-safety-audit' ||
       pathname.startsWith('/app/fire-safety-audit/');
-    if (
-      pathname === '/' ||
-      pathname === '/login' ||
-      pathname === '/app' ||
-      !previewPage
-    ) {
+    const appRoute = pathname === '/app' || pathname.startsWith('/app/');
+    if (appRoute && !previewPage) {
       return NextResponse.redirect(new URL('/app/fire-safety-audit', request.url));
     }
     return NextResponse.next();

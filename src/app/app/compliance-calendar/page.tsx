@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { Field, Select, TextInput } from '@/components/ui/field';
 import { TableSkeleton } from '@/components/ui/skeleton';
-import { SITES } from '@/lib/resources';
+import { ActiveBranchField } from '@/components/active-branch-field';
 import { formatDate } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
@@ -32,7 +32,7 @@ const TABS = ['All', 'Statutory Audit', 'Equipment Inspection', 'Environmental C
 const empty = {
   title: '',
   category: 'Statutory Audit',
-  site: SITES[0],
+  site: '',
   regulator: 'DOSHS',
   dueDate: '',
   status: 'pending',
@@ -170,13 +170,7 @@ export default function ComplianceCalendarPage() {
               ))}
             </Select>
           </Field>
-          <Field label="Site">
-            <Select value={form.site} onChange={(e) => setForm({ ...form, site: e.target.value })}>
-              {SITES.map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </Select>
-          </Field>
+          <ActiveBranchField label="Site" />
           <Field label="Due date">
             <TextInput type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
           </Field>

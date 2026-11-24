@@ -1,5 +1,12 @@
 function escapePdf(text: string) {
   return text
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[’‘]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[–—]/g, '-')
+    .replace(/…/g, '...')
+    .replace(/[^\x20-\x7e]/g, '?')
     .replaceAll('\\', '\\\\')
     .replaceAll('(', '\\(')
     .replaceAll(')', '\\)')
@@ -23,12 +30,15 @@ function wrap(text: string, width = 88) {
   return lines.length ? lines : [''];
 }
 
-export function buildPdf(title: string, lines: string[]) {
+export function buildPdfDocument(
+  title: string,
+  lines: string[],
+  confidentialityLine = 'Confidential workplace safety record',
+) {
   const pageWidth = 595;
   const pageHeight = 842;
   const margin = 48;
   const lineHeight = 14;
-  const maxY = pageHeight - 64;
   const contentLines = lines.flatMap((line) => wrap(line));
 
   const pages: string[][] = [];
@@ -70,7 +80,7 @@ export function buildPdf(title: string, lines: string[]) {
     let stream = 'BT\n';
     stream += `/F2 11 Tf 0.11 0.26 0.20 rg ${margin} ${pageHeight - 42} Td (PRODUCTIVITY OSHAPP  |  OSHA 2007  |  DOSHS) Tj\n`;
     stream += `/F1 16 Tf 0 0 0 rg 0 -24 Td (${escapePdf(title)}) Tj\n`;
-    stream += `/F1 10 Tf 0 -18 Td (${escapePdf('Confidential workplace safety record — Tafari Millers Ltd')}) Tj\n`;
+    stream += `/F1 10 Tf 0 -18 Td (${escapePdf(confidentialityLine)}) Tj\n`;
     stream += '0 g\n';
     pageLines.forEach((line, i) => {
       const xCmd = i === 0 ? `0 -28 Td` : `0 -${lineHeight} Td`;
@@ -96,15 +106,19 @@ export function buildPdf(title: string, lines: string[]) {
     pdf += `${String(off).padStart(10, '0')} 00000 n \n`;
   });
   pdf += `trailer << /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
-  return new Blob([pdf], { type: 'application/pdf' });
+  return pdf;
 }
 
-export function downloadPdf(filename: string, title: string, lines: string[]) {
-  const blob = buildPdf(title, lines);
+export function buildPdf(title: string, lines: string[], confidentialityLine?: string) {
+  return new Blob([buildPdfDocument(title, lines, confidentialityLine)], { type: 'application/pdf' });
+}
+
+export function downloadPdf(filename: string, title: string, lines: string[], confidentialityLine?: string) {
+  const blob = buildPdf(title, lines, confidentialityLine);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
   a.click();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

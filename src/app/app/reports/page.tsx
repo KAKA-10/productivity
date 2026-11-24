@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { Field, Select, TextInput } from '@/components/ui/field';
 import { CardGridSkeleton } from '@/components/ui/skeleton';
-import { SITES } from '@/lib/resources';
+import { ActiveBranchField } from '@/components/active-branch-field';
 import { downloadPdf } from '@/lib/pdf';
 
 type Row = {
@@ -28,7 +28,7 @@ const empty = {
   title: '',
   type: 'Annual return',
   period: '2026',
-  site: 'All sites',
+  site: '',
   status: 'Draft',
   preparedBy: 'Wanjiru Kamau',
 };
@@ -85,11 +85,7 @@ export default function ReportsPage() {
             </Select>
           </Field>
           <Field label="Period"><TextInput value={form.period} onChange={(e) => setForm({ ...form, period: e.target.value })} /></Field>
-          <Field label="Site" className="sm:col-span-2">
-            <Select value={form.site} onChange={(e) => setForm({ ...form, site: e.target.value })}>
-              {['All sites', ...SITES].map((s) => <option key={s}>{s}</option>)}
-            </Select>
-          </Field>
+          <ActiveBranchField label="Site" />
         </div>
       </Modal>
 

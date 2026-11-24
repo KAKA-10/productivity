@@ -38,6 +38,7 @@ import { OfflineBanner } from '@/components/offline-banner';
 import { ReminderBell } from '@/components/reminder-bell';
 import { FeatureAccessPanel } from '@/components/feature-access-panel';
 import { featureForPath } from '@/lib/commerce-catalog';
+import { WorkspaceProvider } from '@/lib/workspace-context';
 
 const GROUPS = [
   {
@@ -95,6 +96,13 @@ const ADMIN_GROUPS = [
     ],
   },
 ];
+const SUPER_ADMIN_GROUPS = [
+  ...ADMIN_GROUPS,
+  {
+    label: 'Client workspace',
+    items: [{ href: '/app/admin/branch-data', label: 'Branch data', icon: Building2 }],
+  },
+];
 const LOCAL_PREVIEW_GROUPS = [
   {
     label: 'Audit previews',
@@ -116,8 +124,8 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const admin = isAdmin(user);
-  const workspaceUser = isClientAccount(user) || isInternalStaff(user);
-  const groups = user.localAuthBypass ? LOCAL_PREVIEW_GROUPS : admin ? ADMIN_GROUPS : GROUPS;
+  const workspaceUser = isClientAccount(user) || isInternalStaff(user) || user.role === 'super_admin';
+  const groups = user.localAuthBypass ? LOCAL_PREVIEW_GROUPS : user.role === 'super_admin' ? SUPER_ADMIN_GROUPS : admin ? ADMIN_GROUPS : GROUPS;
   const feature = featureForPath(pathname);
   const auditPage = pathname === '/app/osh-audit' ||
     pathname.startsWith('/app/osh-audit/') ||
@@ -488,7 +496,7 @@ export function AppShell({
             )}
           </div>
           <div className="flex items-center gap-2">
-            {workspaceUser && !user.localAuthBypass ? <ReminderBell /> : null}
+            {workspaceUser && !admin && !user.localAuthBypass ? <ReminderBell /> : null}
             <span className="inline-flex items-center gap-2 rounded-full border border-forest-200 bg-forest-50 px-2.5 py-1 text-[11px] font-bold text-forest-700">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-forest-500" />
               {admin ? (user.role === 'super_admin' ? 'Super Admin' : 'Productivity Admin') : user.role.replaceAll('_', ' ')} · OSHA 2007
@@ -496,17 +504,19 @@ export function AppShell({
           </div>
         </header>
         <OfflineBanner />
-        <main className="mx-auto w-full max-w-7xl p-4 pb-24 sm:p-6 lg:p-8">
-          {featureLocked ? (
-            <FeatureAccessPanel
-              featureCode={auditPage ? undefined : feature?.code}
-              title={auditPage ? 'Your audit package is not active' : `${feature?.title ?? 'This feature'} is locked`}
-              description={auditPage
-                ? 'Complete your workplace audit registration payment to access the Safety and Compliance Audit.'
-                : `${feature?.description ?? 'This Productivity OSHAPP module'} is visible in your workspace. Purchase it once to enable access.`}
-            />
-          ) : children}
-        </main>
+        <WorkspaceProvider value={workspaces.find((workspace) => workspace.id === activeBranchId) ?? null}>
+          <main className="mx-auto w-full max-w-7xl p-4 pb-24 sm:p-6 lg:p-8">
+            {featureLocked ? (
+              <FeatureAccessPanel
+                featureCode={auditPage ? undefined : feature?.code}
+                title={auditPage ? 'Your audit package is not active' : `${feature?.title ?? 'This feature'} is locked`}
+                description={auditPage
+                  ? 'Complete your workplace audit registration payment to access the Safety and Compliance Audit.'
+                  : `${feature?.description ?? 'This Productivity OSHAPP module'} is visible in your workspace. Purchase it once to enable access.`}
+              />
+            ) : children}
+          </main>
+        </WorkspaceProvider>
       </div>
       {locked ? (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-forest-950/85 p-4 backdrop-blur-sm">

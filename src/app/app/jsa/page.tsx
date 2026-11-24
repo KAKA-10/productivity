@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { Field, Select, TextInput } from '@/components/ui/field';
 import { TableSkeleton } from '@/components/ui/skeleton';
-import { SITES } from '@/lib/resources';
+import { ActiveBranchField } from '@/components/active-branch-field';
 
 type Jsa = {
   id: string;
@@ -27,7 +27,7 @@ type Jsa = {
 
 const empty = {
   taskTitle: '',
-  site: SITES[0],
+  site: '',
   department: 'Operations',
   supervisor: '',
   stepsCount: 4,
@@ -87,7 +87,7 @@ export default function JsaPage() {
       <Modal open={open} onClose={() => setOpen(false)} title="Create JSA" footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={() => void submit()}><FileSpreadsheet className="h-4 w-4" /> Save</Button></>}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Task title" className="sm:col-span-2"><TextInput value={form.taskTitle} onChange={(e) => setForm({ ...form, taskTitle: e.target.value })} /></Field>
-          <Field label="Site"><Select value={form.site} onChange={(e) => setForm({ ...form, site: e.target.value })}>{SITES.map((s) => <option key={s}>{s}</option>)}</Select></Field>
+          <ActiveBranchField label="Site" />
           <Field label="Department"><TextInput value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} /></Field>
           <Field label="Supervisor"><TextInput value={form.supervisor} onChange={(e) => setForm({ ...form, supervisor: e.target.value })} /></Field>
           <Field label="Permit">

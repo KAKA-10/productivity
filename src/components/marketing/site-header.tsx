@@ -1,15 +1,16 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState } from 'react';
-import { ArrowUpRight, Menu, ShieldCheck, X } from 'lucide-react';
+import { ArrowUpRight, Menu, X } from 'lucide-react';
 
 const LINKS = [
   { href: '/#about', label: 'About' },
   { href: '/#services', label: 'Services' },
-  { href: '/#facility', label: 'Facility setup' },
   { href: '/#network', label: 'Network' },
-  { href: '/#platform', label: 'Productivity OSHAPP' },
+  { href: '/#track-record', label: 'Track record' },
+  { href: '/#faq', label: 'FAQs' },
   { href: '/contact', label: 'Contact' },
 ];
 
@@ -19,12 +20,17 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-forest-100/80 bg-white/90 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3.5 sm:px-8 lg:px-10">
         <Link href="/" className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-forest-700 text-white shadow-sm">
-            <ShieldCheck className="h-5 w-5" />
-          </div>
+          <Image
+            src="/brand/productivity-logo.png"
+            alt="Productivity Consulting Limited"
+            width={100}
+            height={100}
+            preload
+            className="h-10 w-10 shrink-0 rounded-full bg-white object-contain"
+          />
           <div>
-            <p className="font-display text-sm font-bold leading-tight text-forest-950">Productivity Consulting</p>
-            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Limited · Kenya</p>
+            <p className="font-display text-sm font-bold leading-tight text-forest-950">Productivity Consulting Limited</p>
+            <p className="mt-0.5 text-[10px] font-semibold tracking-[0.08em] text-slate-500">Inspiring a competitive Kenya</p>
           </div>
         </Link>
         <nav className="hidden items-center gap-6 text-[13px] font-semibold text-slate-600 lg:flex">

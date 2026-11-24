@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { Field, Select, TextInput } from '@/components/ui/field';
 import { TableSkeleton } from '@/components/ui/skeleton';
-import { SITES } from '@/lib/resources';
+import { ActiveBranchField } from '@/components/active-branch-field';
 import { formatDate } from '@/lib/utils';
 
 type Row = {
@@ -24,7 +24,7 @@ type Row = {
   status: string;
 };
 
-const empty = { type: '9kg DCP extinguisher', location: '', site: SITES[0], lastInspection: '', nextInspection: '', status: 'Serviceable' };
+const empty = { type: '9kg DCP extinguisher', location: '', site: '', lastInspection: '', nextInspection: '', status: 'Serviceable' };
 
 export default function FireEquipmentPage() {
   const { items, loading, create } = useCollection<Row>('fire');
@@ -73,7 +73,7 @@ export default function FireEquipmentPage() {
       <Modal open={open} onClose={() => setOpen(false)} title="Register fire equipment" footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={() => void submit()}><Flame className="h-4 w-4" /> Save</Button></>}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Type"><TextInput value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} /></Field>
-          <Field label="Site"><Select value={form.site} onChange={(e) => setForm({ ...form, site: e.target.value })}>{SITES.map((s) => <option key={s}>{s}</option>)}</Select></Field>
+          <ActiveBranchField label="Site" />
           <Field label="Location" className="sm:col-span-2"><TextInput value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} /></Field>
           <Field label="Last inspection"><TextInput type="date" value={form.lastInspection} onChange={(e) => setForm({ ...form, lastInspection: e.target.value })} /></Field>
           <Field label="Next inspection"><TextInput type="date" value={form.nextInspection} onChange={(e) => setForm({ ...form, nextInspection: e.target.value })} /></Field>

@@ -37,8 +37,8 @@ export async function POST(request: Request) {
     prisma.user.findUnique({ where: { id: staffId }, select: { id: true, role: true, status: true } }),
     prisma.organisation.findUnique({ where: { id: organisationId }, select: { id: true, status: true } }),
   ]);
-  if (!staff || !['technical', 'trainee'].includes(staff.role) || staff.status !== 'active') {
-    return NextResponse.json({ error: 'Choose an active Technical or Trainee account' }, { status: 400 });
+  if (!staff || !['technical', 'trainee', ...(isSuperAdmin(session) ? ['intern'] : [])].includes(staff.role) || staff.status !== 'active') {
+    return NextResponse.json({ error: 'Choose an active Technical, Trainee or Intern account' }, { status: 400 });
   }
   if (!organisation || organisation.status !== 'active') {
     return NextResponse.json({ error: 'Choose an active client organisation' }, { status: 400 });

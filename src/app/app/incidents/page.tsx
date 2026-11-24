@@ -13,7 +13,7 @@ import { Modal } from '@/components/ui/modal';
 import { ChoiceCards, Field, Select, TextInput, Textarea } from '@/components/ui/field';
 import { EmptyState } from '@/components/ui/empty-state';
 import { TableSkeleton } from '@/components/ui/skeleton';
-import { SITES } from '@/lib/resources';
+import { ActiveBranchField } from '@/components/active-branch-field';
 import { formatDate } from '@/lib/utils';
 import { downloadPdf } from '@/lib/pdf';
 
@@ -41,7 +41,7 @@ type Incident = {
 const empty = {
   title: '',
   type: 'Near-Miss',
-  site: SITES[0],
+  site: '',
   severity: 'Medium',
   reporter: '',
   summary: '',
@@ -215,13 +215,7 @@ export default function IncidentsPage() {
               ))}
             </Select>
           </Field>
-          <Field label="Site">
-            <Select value={form.site} onChange={(e) => setForm({ ...form, site: e.target.value })}>
-              {SITES.map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </Select>
-          </Field>
+          <ActiveBranchField label="Site" />
           <div className="sm:col-span-2">
             <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">
               Severity

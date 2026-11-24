@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { strictApi } from '@/lib/strict-api';
+import { useActiveWorkspace } from '@/lib/workspace-context';
 
 type Submission = {
   id: string;
@@ -26,6 +27,7 @@ type Submission = {
 const dateLabel = (value: string | null) => value ? new Date(value).toLocaleDateString() : 'Not submitted';
 
 export default function AdminAuditsPage() {
+  const branch = useActiveWorkspace();
   const [rows, setRows] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -46,7 +48,7 @@ export default function AdminAuditsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Administration" title="Audit submissions" description="Review workplace responses, evidence and section-level findings." actions={<a href="/api/admin/audits/export"><Button variant="secondary"><Download className="h-4 w-4" /> Export CSV</Button></a>} />
+      <PageHeader eyebrow="Administration" title="Audit submissions" description="Review workplace responses, evidence and section-level findings." actions={<a href={`/api/admin/audits/export${branch ? `?branchId=${encodeURIComponent(branch.id)}` : ''}`}><Button variant="secondary"><Download className="h-4 w-4" /> Export PDF</Button></a>} />
       {error ? <p role="alert" className="rounded-xl border border-clay-200 bg-clay-50 p-4 text-sm text-clay-700">{error}</p> : null}
       <div className="grid gap-3 sm:grid-cols-[1fr_200px]">
         <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3"><Search className="h-4 w-4 text-slate-400" /><input aria-label="Search submissions" className="h-11 min-w-0 flex-1 bg-transparent text-sm outline-none" placeholder="Search workplace or reference" value={query} onChange={(event) => setQuery(event.target.value)} /></div>

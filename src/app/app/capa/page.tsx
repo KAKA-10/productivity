@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { ChoiceCards, Field, Select, TextInput, Textarea } from '@/components/ui/field';
 import { TableSkeleton } from '@/components/ui/skeleton';
-import { SITES } from '@/lib/resources';
+import { ActiveBranchField } from '@/components/active-branch-field';
 import { formatDate } from '@/lib/utils';
 
 type Row = {
@@ -29,7 +29,7 @@ type Row = {
 const empty = {
   title: '',
   source: '',
-  site: SITES[0],
+  site: '',
   owner: '',
   dueDate: '',
   priority: 'Medium',
@@ -100,7 +100,7 @@ export default function CapaPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Title" className="sm:col-span-2"><TextInput value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></Field>
           <Field label="Source"><TextInput value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} /></Field>
-          <Field label="Site"><Select value={form.site} onChange={(e) => setForm({ ...form, site: e.target.value })}>{SITES.map((s) => <option key={s}>{s}</option>)}</Select></Field>
+          <ActiveBranchField label="Site" />
           <Field label="Owner"><TextInput value={form.owner} onChange={(e) => setForm({ ...form, owner: e.target.value })} /></Field>
           <Field label="Due"><TextInput type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} /></Field>
           <div className="sm:col-span-2">

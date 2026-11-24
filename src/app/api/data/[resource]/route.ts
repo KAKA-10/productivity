@@ -3,7 +3,7 @@ import { getSession } from '@/lib/auth';
 import { getModel, isResource, RESOURCE_PREFIX } from '@/lib/resources';
 import { nextRef } from '@/lib/utils';
 import { hasResourceAccess } from '@/lib/commerce-catalog';
-import { canEditWorkspace } from '@/lib/roles';
+import { canEditWorkspace, isSuperAdmin } from '@/lib/roles';
 import { resolveWorkspaceBranch } from '@/lib/workspace-access';
 
 export async function GET(
@@ -12,7 +12,7 @@ export async function GET(
 ) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (!canEditWorkspace(session)) return NextResponse.json({ error: 'Workplace or assigned staff access required' }, { status: 403 });
+  if (!canEditWorkspace(session) && !isSuperAdmin(session)) return NextResponse.json({ error: 'Workplace or assigned staff access required' }, { status: 403 });
 
   const { resource } = await context.params;
   if (!isResource(resource)) {
@@ -31,7 +31,10 @@ export async function GET(
     where: { organisation: branch.organisation, branchId: branch.id },
     orderBy: { createdAt: 'desc' },
   });
-  return NextResponse.json(items);
+  return NextResponse.json(items.map((item) => {
+    if (!item || typeof item !== 'object' || !('site' in item)) return item;
+    return { ...item, site: branch.name };
+  }), { headers: { 'Cache-Control': 'private, no-store' } });
 }
 
 export async function POST(
@@ -66,6 +69,7 @@ export async function POST(
   const created = await model.create({
     data: {
       ...rest,
+      ...(Object.hasOwn(rest, 'site') ? { site: branch.name } : {}),
       organisation: branch.organisation,
       branchId: branch.id,
       ref: rest.ref || nextRef(RESOURCE_PREFIX[resource], count),

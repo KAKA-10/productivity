@@ -2,14 +2,23 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { getAuditProgress } from '@/lib/audit-template';
-import { canReviewAudits } from '@/lib/roles';
+import { canReviewAudits, isSuperAdmin } from '@/lib/roles';
+import { resolveWorkspaceBranch } from '@/lib/workspace-access';
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!canReviewAudits(session)) return NextResponse.json({ error: 'Administrator access required' }, { status: 403 });
 
+  const requestedBranchId = request.headers.get('x-todomu-branch');
+  const branch = isSuperAdmin(session) && requestedBranchId
+    ? await resolveWorkspaceBranch(session, requestedBranchId)
+    : null;
+  if (isSuperAdmin(session) && requestedBranchId && !branch) {
+    return NextResponse.json({ error: 'Choose an active client branch' }, { status: 400 });
+  }
   const submissions = await prisma.auditSubmission.findMany({
+    where: branch ? { branchId: branch.id } : undefined,
     orderBy: [{ submittedAt: 'desc' }, { updatedAt: 'desc' }],
     include: {
       user: { select: { id: true, username: true, fullName: true, organisation: true, email: true } },

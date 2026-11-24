@@ -72,9 +72,3 @@ export function getModel(resource: ResourceKey) {
       return prisma.doshsReport;
   }
 }
-
-export const SITES = [
-  'Industrial Area Plant',
-  'Thika Processing Plant',
-  'Athi River Depot',
-];

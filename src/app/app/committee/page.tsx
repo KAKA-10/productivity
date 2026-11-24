@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { Field, Select, TextInput, Textarea } from '@/components/ui/field';
 import { TableSkeleton } from '@/components/ui/skeleton';
-import { SITES } from '@/lib/resources';
+import { ActiveBranchField } from '@/components/active-branch-field';
 import { formatDate } from '@/lib/utils';
 
 type Meeting = {
@@ -43,7 +43,7 @@ export default function CommitteePage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     title: 'OSH Committee',
-    site: SITES[0],
+    site: '',
     meetingDate: '',
     chair: '',
     attendees: 8,
@@ -122,7 +122,7 @@ export default function CommitteePage() {
       <Modal open={open} onClose={() => setOpen(false)} title="OSH committee minutes" footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={() => void submit()}><MessageSquare className="h-4 w-4" /> Save</Button></>}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Title" className="sm:col-span-2"><TextInput value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></Field>
-          <Field label="Site"><Select value={form.site} onChange={(e) => setForm({ ...form, site: e.target.value })}>{SITES.map((s) => <option key={s}>{s}</option>)}</Select></Field>
+          <ActiveBranchField label="Site" />
           <Field label="Date"><TextInput type="date" value={form.meetingDate} onChange={(e) => setForm({ ...form, meetingDate: e.target.value })} /></Field>
           <Field label="Chair"><TextInput value={form.chair} onChange={(e) => setForm({ ...form, chair: e.target.value })} /></Field>
           <Field label="Attendees"><TextInput type="number" value={form.attendees} onChange={(e) => setForm({ ...form, attendees: Number(e.target.value) })} /></Field>

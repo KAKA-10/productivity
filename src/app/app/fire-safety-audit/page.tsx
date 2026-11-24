@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, Circle, Clock3, Flame, Plus, Save } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Circle, Clock3, Download, Flame, Plus, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import {
   type FireSafetyAuditData,
 } from '@/lib/fire-safety-audit';
 import { strictApi } from '@/lib/strict-api';
+import { downloadPdf } from '@/lib/pdf';
 
 type FireAuditRecord = {
   id: string;
@@ -138,6 +139,49 @@ export default function FireSafetyAuditPage() {
     setActiveStepId(stepId);
   };
 
+  const downloadAudit = async () => {
+    if (!record || !data) return;
+    try {
+      await save(data);
+      const lines = [
+        `Organisation: ${record.branch.organisation}`,
+        `Branch: ${record.branch.name}`,
+        `Audit cycle: ${record.cycleYear}`,
+        `Progress: ${progress.completed}/${progress.total} (${progress.percent}%)`,
+        `Last updated: ${new Date(record.updatedAt).toLocaleString()}`,
+        '',
+        'EMPLOYER / OCCUPIER DETAILS',
+        ...FIRE_EMPLOYER_FIELDS.map((field) => `${field.label}: ${data.employerDetails[field.key] || 'Not provided'}`),
+        '',
+        'WORKERS DATA',
+        ...FIRE_WORKER_FIELDS.map((field) => `${field.label}: ${data.workersData[field.key] || 'Not provided'}`),
+        '',
+      ];
+      for (const section of FIRE_SAFETY_SECTIONS) {
+        lines.push(section.title.toUpperCase(), section.description);
+        for (const question of section.questions ?? []) {
+          const answer = data.checklistAnswers[question.key];
+          lines.push(`${question.label}: ${answer?.choice ? CHOICE_LABELS[answer.choice] ?? answer.choice : 'Not answered'}`);
+          if (answer?.narration) lines.push(`Notes: ${answer.narration}`);
+        }
+        lines.push('');
+      }
+      lines.push(
+        'FURTHER INFORMATION',
+        ...[...FIRE_FURTHER_FIELDS, ...FIRE_PRIORITY_FIELDS].map((field) => `${field.label}: ${data.furtherInformation[field.key] || 'Not provided'}`),
+      );
+      downloadPdf(
+        `fire-safety-audit-${record.cycleYear}`,
+        `Fire Safety Audit - ${record.branch.name}`,
+        lines,
+        `Confidential fire safety audit for ${record.branch.organisation}`,
+      );
+      toast.success('Fire safety audit PDF downloaded');
+    } catch (reason) {
+      toast.error(reason instanceof Error ? reason.message : 'Unable to download the fire safety audit.');
+    }
+  };
+
   const renderSimpleFields = (
     fields: readonly { key: string; label: string; type: string }[],
     group: 'employerDetails' | 'workersData' | 'furtherInformation',
@@ -209,12 +253,17 @@ export default function FireSafetyAuditPage() {
         title="Fire Safety Audit"
         description="A dedicated fire audit, separate from the annual OSH questionnaire. Your responses save automatically as you work."
         actions={record && data ? (
-          <Button
-            variant="secondary"
-            onClick={() => void save(data).then(() => toast.success('Fire safety audit saved')).catch((reason: unknown) => toast.error(reason instanceof Error ? reason.message : 'Unable to save the audit.'))}
-          >
-            <Save className="h-4 w-4" /> Save now
-          </Button>
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => void save(data).then(() => toast.success('Fire safety audit saved')).catch((reason: unknown) => toast.error(reason instanceof Error ? reason.message : 'Unable to save the audit.'))}
+            >
+              <Save className="h-4 w-4" /> Save now
+            </Button>
+            <Button variant="secondary" disabled={saving} onClick={() => void downloadAudit()}>
+              <Download className="h-4 w-4" /> Download PDF
+            </Button>
+          </>
         ) : null}
       />
 

@@ -5,6 +5,7 @@ export const ACCOUNT_ROLES = [
   'admin',
   'technical',
   'trainee',
+  'intern',
   'client_super_admin',
   'workplace_admin',
 ] as const;
@@ -20,7 +21,7 @@ export function isSuperAdmin(user: SessionUser | null | undefined) {
 }
 
 export function isInternalStaff(user: SessionUser | null | undefined) {
-  return user?.role === 'technical' || user?.role === 'trainee';
+  return user?.role === 'technical' || user?.role === 'trainee' || user?.role === 'intern';
 }
 
 export function isClientAccount(user: SessionUser | null | undefined) {

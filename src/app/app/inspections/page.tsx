@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { Field, Select, TextInput, Textarea } from '@/components/ui/field';
 import { TableSkeleton } from '@/components/ui/skeleton';
-import { SITES } from '@/lib/resources';
+import { ActiveBranchField } from '@/components/active-branch-field';
 import { formatDate } from '@/lib/utils';
 
 type Row = {
@@ -25,7 +25,7 @@ type Row = {
   findings: string;
 };
 
-const empty = { title: '', area: '', site: SITES[0], inspector: '', scheduled: '', status: 'Scheduled', findings: '' };
+const empty = { title: '', area: '', site: '', inspector: '', scheduled: '', status: 'Scheduled', findings: '' };
 
 export default function InspectionsPage() {
   const { items, loading, create } = useCollection<Row>('inspections');
@@ -75,7 +75,7 @@ export default function InspectionsPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Title" className="sm:col-span-2"><TextInput value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></Field>
           <Field label="Area"><TextInput value={form.area} onChange={(e) => setForm({ ...form, area: e.target.value })} /></Field>
-          <Field label="Site"><Select value={form.site} onChange={(e) => setForm({ ...form, site: e.target.value })}>{SITES.map((s) => <option key={s}>{s}</option>)}</Select></Field>
+          <ActiveBranchField label="Site" />
           <Field label="Inspector"><TextInput value={form.inspector} onChange={(e) => setForm({ ...form, inspector: e.target.value })} /></Field>
           <Field label="Date"><TextInput type="date" value={form.scheduled} onChange={(e) => setForm({ ...form, scheduled: e.target.value })} /></Field>
           <Field label="Findings" className="sm:col-span-2"><Textarea value={form.findings} onChange={(e) => setForm({ ...form, findings: e.target.value })} /></Field>

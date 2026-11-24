@@ -3,12 +3,13 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ArrowRight, ClipboardCheck, Download, FileClock, UsersRound } from 'lucide-react';
-import { api } from '@/lib/api';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { strictApi } from '@/lib/strict-api';
+import { useActiveWorkspace } from '@/lib/workspace-context';
 
 type Submission = {
   id: string;
@@ -22,13 +23,14 @@ type Submission = {
 type Account = { id: string; role: string; status: string };
 
 export function AdminDashboard() {
+  const branch = useActiveWorkspace();
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    Promise.all([api<Submission[]>('/api/admin/audits'), api<Account[]>('/api/admin/users')])
+    Promise.all([strictApi<Submission[]>('/api/admin/audits'), strictApi<Account[]>('/api/admin/users')])
       .then(([auditRows, accountRows]) => {
         setSubmissions(auditRows);
         setAccounts(accountRows);
@@ -51,7 +53,7 @@ export function AdminDashboard() {
         eyebrow="Administration"
         title="Review centre"
         description="Manage workplace accounts and move OSH audit submissions through review."
-        actions={<a href="/api/admin/audits/export"><Button variant="secondary"><Download className="h-4 w-4" /> Export responses</Button></a>}
+        actions={<a href={`/api/admin/audits/export${branch ? `?branchId=${encodeURIComponent(branch.id)}` : ''}`}><Button variant="secondary"><Download className="h-4 w-4" /> Export responses PDF</Button></a>}
       />
       {error ? <p role="alert" className="rounded-xl border border-clay-200 bg-clay-50 p-4 text-sm text-clay-700">{error}</p> : null}
       <div className="grid gap-4 sm:grid-cols-3">
